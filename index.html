@@ -52,17 +52,25 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* ★変更：文字を浮かせて、スワイプ操作の邪魔にならないようにする */
         .month-screen-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
             text-align: center;
-            padding: 30px 0 10px 0;
+            padding: 30px 0 20px 0;
             font-size: 18px;
             letter-spacing: 4px;
             z-index: 20;
+            background: linear-gradient(to bottom, rgba(26,26,26,0.9) 20%, transparent);
+            pointer-events: none; /* 下にあるカードをスワイプできるようにする */
         }
 
+        /* ★変更：リスト全体を画面いっぱいに広げて、完全な中央配置を実現する */
         #month-list {
-            position: relative;
-            flex-grow: 1;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -192,13 +200,12 @@
         #playback-screen { 
             display: none; 
             flex-direction: column; 
-            justify-content: center; /* ★画面の完全な中央に配置 */
+            justify-content: center; 
             height: 100dvh; 
             background-color: #000; 
-            position: relative; /* ヘッダーを絶対配置にするための基準 */
+            position: relative; 
         }
         
-        /* ★ヘッダーを動画の上に浮かせて、中央配置の邪魔をしないようにする */
         #playback-screen .camera-header {
             position: absolute;
             top: 0;
@@ -206,16 +213,13 @@
             width: 100%;
             box-sizing: border-box;
             z-index: 20;
-            border-bottom: none; /* 没入感を高めるために境界線を消す */
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); /* 少しグラデーションで文字を見やすく */
+            border-bottom: none; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); 
         }
 
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         
-        #playback-screen .video-container { 
-            margin: 0; /* マージンをリセットし、親要素のjustify-content: centerに任せる */
-        }
-        
+        #playback-screen .video-container { margin: 0; }
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
 
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
@@ -533,7 +537,7 @@
 
         function createTicket(weekNum, datesInWeek) {
             const startDay = datesInWeek[0];
-            const endDay = datesInWeek[6];
+            const endDay = datesInWeek[6]; // この週の土曜日
             const startM = monthNames[startDay.getMonth()].substring(0, 3);
             const endM = monthNames[endDay.getMonth()].substring(0, 3);
             
