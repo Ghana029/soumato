@@ -573,7 +573,12 @@
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
             const isLastDayRecorded = !!recordedData[lastDateKey]; 
             const isWeekOver = todayResetObj > endDay; 
-            const isViewable = isLastDayRecorded || isWeekOver;
+            // ▼ 変更前（本来の厳密なロック機能）
+
+
+
+// ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
+const isViewable = true;
 
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
