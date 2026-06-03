@@ -298,8 +298,8 @@
             font-size: 18px;
         }
 
-        /* --- 3. 撮影画面 & 4. 再生画面 --- */
-        #camera-screen, #playback-screen {
+        /* --- 3. 撮影画面 --- */
+        #camera-screen {
             display: none;
             flex-direction: column;
             height: 100dvh;
@@ -313,7 +313,7 @@
             border-bottom: 1px solid #222;
         }
 
-        #camera-date-display, #playback-date-display {
+        #camera-date-display {
             flex-grow: 1;
             text-align: center;
             font-size: 16px;
@@ -333,19 +333,36 @@
             margin-top: 20px;
         }
 
-        #camera-view, #playback-view {
+        #camera-view {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            z-index: 1;
+        }
+
+        /* ★追加：タイマーのテキスト表示 */
+        #record-timer {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #b22222;
+            font-family: monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 8px;
+            border-radius: 4px;
         }
 
         #progress-container {
             width: 100%;
-            height: 4px;
-            background-color: #333;
+            height: 6px;
+            background-color: #111;
             position: absolute;
             bottom: 0;
             left: 0;
+            z-index: 10;
         }
 
         #progress-bar {
@@ -353,6 +370,7 @@
             width: 0%;
             background-color: #b22222;
             transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(178, 34, 34, 0.8); /* 少し発光させる */
         }
 
         .controls {
@@ -389,7 +407,75 @@
         }
         
         .mock-text { position: absolute; color: #555; font-size: 12px; letter-spacing: 1px; z-index: 0; }
-        #camera-view { z-index: 1; }
+
+        /* --- 4. 撮影終了画面（CUT画面） --- */
+        #finish-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            background-color: #0a0a0a;
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            z-index: 100;
+        }
+
+        .finish-title {
+            font-size: 32px;
+            letter-spacing: 8px;
+            color: #f4ebd0;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .finish-desc {
+            font-size: 12px;
+            color: #888;
+            letter-spacing: 2px;
+            margin-bottom: 50px;
+            text-align: center;
+        }
+
+        .finish-btn {
+            background-color: transparent;
+            border: 1px solid #b22222;
+            color: #b22222;
+            padding: 15px 40px;
+            font-family: inherit;
+            font-size: 14px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .finish-btn:hover {
+            background-color: #b22222;
+            color: #111;
+        }
+
+        /* --- 5. 再生画面 --- */
+        #playback-screen {
+            display: none;
+            flex-direction: column;
+            height: 100dvh;
+            background-color: #000;
+        }
+
+        #playback-date-display {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 16px;
+            letter-spacing: 2px;
+            color: #888;
+        }
+
+        #playback-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
     </style>
 </head>
@@ -427,6 +513,9 @@
             <div class="video-container">
                 <video id="camera-view" autoplay muted playsinline></video>
                 <div class="mock-text">CAMERA SETUP...</div>
+                
+                <div id="record-timer">00:00 / 00:20</div>
+
                 <div id="progress-container">
                     <div id="progress-bar"></div>
                 </div>
@@ -435,6 +524,12 @@
             <div class="controls">
                 <button id="record-btn"></button>
             </div>
+        </div>
+
+        <div id="finish-screen">
+            <div class="finish-title">CUT.</div>
+            <div class="finish-desc">今日の記録をフィルムに焼き付けました</div>
+            <button class="finish-btn" id="finish-ok-btn">RETURN</button>
         </div>
 
         <div id="playback-screen">
@@ -457,6 +552,7 @@
         const monthList = document.getElementById('month-list');
         const homeScreen = document.getElementById('home-screen');
         const cameraScreen = document.getElementById('camera-screen');
+        const finishScreen = document.getElementById('finish-screen');
         const playbackScreen = document.getElementById('playback-screen');
         
         const calendarElement = document.getElementById('calendar');
@@ -470,6 +566,7 @@
         
         const recordBtn = document.getElementById('record-btn');
         const progressBar = document.getElementById('progress-bar');
+        const recordTimer = document.getElementById('record-timer');
 
         const todayDateObj = new Date();
         const currentYear = todayDateObj.getFullYear();
@@ -484,7 +581,6 @@
         let currentSelectedDay = null;
         let selectedMonth = currentMonthNumReal;
         
-        // ★録画データを保存するオブジェクト（今回は実際の動画URLが保存されます）
         const recordedData = {};
 
         function initMonthScreen() {
@@ -622,7 +718,6 @@
                 
                 dayBox.onclick = () => {
                     if (recordedData[dataKey]) {
-                        // ★録画済みの場合は再生画面を開く
                         openPlaybackScreen(day, recordedData[dataKey]);
                         return;
                     }
@@ -666,12 +761,13 @@
             ticketsArea.appendChild(ticket);
         }
 
-        /* === 実際の録画システムの構築 === */
+        /* === 録画システムの構築 === */
         let isRecording = false;
         let totalRecordTime = 0;
         let timerInterval;
         let mediaRecorder;
         let recordedChunks = [];
+        const MAX_RECORD_TIME = 20000; // 20秒
 
         function openCameraScreen(day) {
             currentSelectedDay = day;
@@ -682,32 +778,30 @@
             totalRecordTime = 0;
             recordedChunks = [];
             progressBar.style.width = '0%';
+            recordTimer.textContent = '00:00 / 00:20';
+            
             recordBtn.disabled = false;
             recordBtn.classList.remove('recording');
 
             startCamera();
         }
 
-async function startCamera() {
+        async function startCamera() {
             try {
-                // 映像と音声の両方をリクエスト
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { aspectRatio: 16/9, facingMode: "environment" },
                     audio: true
                 });
                 cameraView.srcObject = stream;
 
-                // MediaRecorderの初期化
                 mediaRecorder = new MediaRecorder(stream);
                 
-                // データが生成されたら配列に保存
                 mediaRecorder.ondataavailable = function(event) {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
                     }
                 };
 
-                // 録画完了（ストップ）時の処理
                 mediaRecorder.onstop = function() {
                     const blob = new Blob(recordedChunks, { type: 'video/webm' }); 
                     const videoURL = URL.createObjectURL(blob); 
@@ -716,16 +810,15 @@ async function startCamera() {
                     recordedData[dataKey] = videoURL;
                     
                     stopCamera();
+                    
+                    // 録画完了後、ホームに戻る前に「CUT画面」を表示
                     cameraScreen.style.display = 'none';
-                    homeScreen.style.display = 'flex';
-                    renderCalendarAndTickets(); 
-                    initMonthScreen();
+                    finishScreen.style.display = 'flex';
                 };
 
             } catch (err) {
                 console.log("カメラ起動エラー詳細:", err);
-                // ★エラー時に画面でお知らせするように追加
-                alert("カメラまたはマイクの起動に失敗しました。\n・カメラのアクセスが許可されているか\n・Live Serverなどのローカルサーバー環境で開いているか（file:///では動きません）\nをご確認ください。");
+                alert("カメラまたはマイクの起動に失敗しました。\nブラウザのアクセス許可をご確認ください。");
             }
         }
 
@@ -735,37 +828,39 @@ async function startCamera() {
             }
         }
 
-        // 録画ボタンの挙動（一時停止と再開を含む）
         recordBtn.onclick = function() {
             if (!mediaRecorder) return;
 
             if (isRecording) {
-                // 録画中なら一時停止
                 isRecording = false;
                 recordBtn.classList.remove('recording');
                 clearInterval(timerInterval);
                 
                 if (mediaRecorder.state === 'recording') {
-                    mediaRecorder.pause(); // 録画をポーズ
+                    mediaRecorder.pause(); 
                 }
             } else {
-                // 一時停止中、または最初の録画開始
                 isRecording = true;
                 recordBtn.classList.add('recording');
                 
                 if (mediaRecorder.state === 'inactive') {
-                    mediaRecorder.start(); // 最初からスタート
+                    mediaRecorder.start(); 
                 } else if (mediaRecorder.state === 'paused') {
-                    mediaRecorder.resume(); // 続きからスタート
+                    mediaRecorder.resume(); 
                 }
 
-                // プログレスバーの更新（最大20秒）
                 timerInterval = setInterval(() => {
                     totalRecordTime += 100;
-                    progressBar.style.width = (totalRecordTime / 20000) * 100 + '%';
                     
-                    // 20秒に達したら自動で完了させる
-                    if (totalRecordTime >= 20000) {
+                    // バーの更新
+                    progressBar.style.width = (totalRecordTime / MAX_RECORD_TIME) * 100 + '%';
+                    
+                    // タイマーテキストの更新 (00:00形式)
+                    const currentSec = Math.floor(totalRecordTime / 1000);
+                    const formattedSec = currentSec.toString().padStart(2, '0');
+                    recordTimer.textContent = `00:${formattedSec} / 00:20`;
+                    
+                    if (totalRecordTime >= MAX_RECORD_TIME) {
                         finishRecording();
                     }
                 }, 100);
@@ -778,26 +873,33 @@ async function startCamera() {
             clearInterval(timerInterval);
             recordBtn.disabled = true;
             
-            // stopを呼ぶと上で設定した mediaRecorder.onstop が発火し保存される
             if (mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
             }
         }
 
+        // 撮影終了画面のRETURNボタン
+        document.getElementById('finish-ok-btn').onclick = () => {
+            finishScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+            renderCalendarAndTickets(); 
+            initMonthScreen();
+        };
+
         // --- 再生（プレイバック）画面の処理 ---
         function openPlaybackScreen(day, videoURL) {
             playbackDateDisplay.textContent = `${monthNames[selectedMonth-1].substring(0,3)} ${day} - PLAY`;
-            playbackView.src = videoURL; // 保存した動画URLをセット
+            playbackView.src = videoURL; 
             
             homeScreen.style.display = 'none';
             playbackScreen.style.display = 'flex';
             
-            playbackView.play(); // 自動再生
+            playbackView.play(); 
         }
 
         document.getElementById('playback-back-btn').onclick = () => {
             playbackView.pause();
-            playbackView.src = ""; // メモリ節約
+            playbackView.src = ""; 
             playbackScreen.style.display = 'none';
             homeScreen.style.display = 'flex';
         };
@@ -807,7 +909,7 @@ async function startCamera() {
             isRecording = false;
             clearInterval(timerInterval);
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop(); // 途中でやめた場合はデータが残る可能性がありますが、一旦ストップします
+                mediaRecorder.stop(); 
             }
             stopCamera();
             cameraScreen.style.display = 'none';
@@ -821,7 +923,6 @@ async function startCamera() {
             updateMonthCards();
         };
 
-        // アプリ起動
         initMonthScreen();
 
     </script>
