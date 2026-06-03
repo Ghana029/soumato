@@ -72,7 +72,15 @@
         .month-name { font-size: 32px; letter-spacing: 3px; z-index: 2; text-shadow: 2px 2px 5px rgba(0,0,0,0.9); }
         .month-card.has-data::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, #4a3f35, #2a221d); opacity: 0.7; z-index: 1; }
 
-        .bottom-menu { position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 20px; z-index: 30; pointer-events: auto; }
+        /* ★修正：設定ボタンの位置をより下部へ下げ、スマホのセーフエリア（ホームバー領域）を考慮する */
+        .bottom-menu { 
+            position: absolute; 
+            bottom: 15px; 
+            padding-bottom: env(safe-area-inset-bottom); 
+            left: 0; right: 0; 
+            display: flex; justify-content: center; gap: 20px; 
+            z-index: 30; pointer-events: auto; 
+        }
         .text-btn { background: none; border: 1px solid #444; color: #888; padding: 8px 15px; font-size: 10px; letter-spacing: 2px; cursor: pointer; border-radius: 20px; transition: 0.3s; -webkit-tap-highlight-color: transparent; }
         .text-btn:hover { background-color: #333; color: #f4ebd0; border-color: #666; }
 
@@ -205,8 +213,6 @@
         #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
         #export-download-link { text-decoration: none; display: inline-block; margin-bottom: 0; }
         #export-screen .finish-btn { width: 260px; box-sizing: border-box; margin: 6px 0; text-align: center; white-space: nowrap; padding: 15px 20px; }
-
-        #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
 
     </style>
 </head>
@@ -601,17 +607,15 @@
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
                 dayBox.onclick = async () => {
-                    // 【テスト用制限解除】当日以外でも現在の録画秒数をチェックする
+                    // ★テスト用制限解除：当日以外でも秒数チェックし、20秒未満ならカメラを開く
                     const chunks = await getFullChunksForDate(dataKey);
                     const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
                     
-                    // 20秒未満（未撮影または途中）なら、過去・未来問わずカメラを開く
                     if (currentTotal < MAX_RECORD_TIME) {
                         openCameraScreen(boxYear, boxMonth, boxDate);
                         return;
                     }
                     
-                    // 20秒撮りきっている場合のみ再生へ
                     if (recordedData[dataKey]) { 
                         startPlayback([dataKey]); 
                         return; 
@@ -636,11 +640,7 @@
             });
             const recordedCount = validKeys.length;
 
-            const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
-            const isLastDayRecorded = !!recordedData[lastDateKey]; 
-            const isWeekOver = todayResetObj > endDay; 
-            
-            // 【テスト用制限解除】強制的に isViewable を true にして常に解放する
+            // ★テスト用制限解除：isViewable を強制的に true
             const isViewable = true;
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
@@ -820,19 +820,17 @@
             if (currentPlayIndex >= playlistUrls.length) { closePlaybackScreen(); return; }
             const currentItem = playlistUrls[currentPlayIndex];
             
-            if (playlistUrls.length > 1) playbackDateDisplay.textContent = `WEEKLY MOVIE - ${currentPlayIndex + 1}/${playlistUrls.length}`;
+            if (playlistUrls.length > 1) playbackDateDisplay.textContent = `WEEKLY MOVIE`;
             else { const parts = currentItem.key.split('-'); playbackDateDisplay.textContent = `${monthNames[parseInt(parts[1])-1].substring(0,3)} ${parts[2]} - PLAY`; }
 
             if (showWatermark) { playbackWatermark.textContent = currentItem.dateStr; playbackWatermark.style.display = 'block'; } 
             else { playbackWatermark.style.display = 'none'; }
 
-            // ★修正：事前読み込み（load()）を削除し、再生が始まった瞬間に画面を表示する
             playbackLoading.style.display = 'block';
             playbackView.style.opacity = '0';
             
             playbackView.src = currentItem.url;
             
-            // oncanplayではなく、確実に再生が始まった合図（onplaying）で黒幕を消す
             playbackView.onplaying = () => {
                 playbackLoading.style.display = 'none';
                 playbackView.style.opacity = '1';
