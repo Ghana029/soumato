@@ -152,25 +152,14 @@
         .ticket::before { left: -8px; } .ticket::after { right: -8px; }
         .ticket:hover { transform: translateY(-2px); background-color: #e8debf; }
         
-        .ticket.locked {
-            background-color: #2a2a2a;
-            color: #666;
-            border-color: #444;
-            cursor: not-allowed;
-        }
-        .ticket.locked:hover {
-            transform: none;
-            background-color: #2a2a2a;
-        }
-        .ticket.locked .ticket-dates {
-            color: #555;
-        }
+        .ticket.locked { background-color: #2a2a2a; color: #666; border-color: #444; cursor: not-allowed; }
+        .ticket.locked:hover { transform: none; background-color: #2a2a2a; }
+        .ticket.locked .ticket-dates { color: #555; }
 
         .ticket-info { display: flex; flex-direction: column; }
         .ticket-week { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
         .ticket-dates { font-size: 11px; color: #444; margin-top: 4px; }
         .ticket-play { font-size: 18px; display: flex; align-items: center; gap: 8px; }
-        
         .ticket.locked .ticket-play { font-size: 14px; }
 
         .record-badge { font-size: 10px; background: #b22222; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
@@ -200,13 +189,31 @@
         .finish-btn:hover { background-color: #b22222; color: #111; }
 
         /* --- 5. 再生画面 --- */
-        #playback-screen { display: none; flex-direction: column; height: 100dvh; background-color: #000; }
+        #playback-screen { 
+            display: none; 
+            flex-direction: column; 
+            justify-content: center; /* ★画面の完全な中央に配置 */
+            height: 100dvh; 
+            background-color: #000; 
+            position: relative; /* ヘッダーを絶対配置にするための基準 */
+        }
+        
+        /* ★ヘッダーを動画の上に浮かせて、中央配置の邪魔をしないようにする */
+        #playback-screen .camera-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 20;
+            border-bottom: none; /* 没入感を高めるために境界線を消す */
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); /* 少しグラデーションで文字を見やすく */
+        }
+
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         
-        /* ★修正：再生画面の動画を画面の中央に配置 */
-        #playback-screen .video-container {
-            margin-top: auto;
-            margin-bottom: auto;
+        #playback-screen .video-container { 
+            margin: 0; /* マージンをリセットし、親要素のjustify-content: centerに任せる */
         }
         
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
@@ -366,13 +373,11 @@
         const progressBar = document.getElementById('progress-bar');
         const recordTimer = document.getElementById('record-timer');
 
-        // 現実の今日の日付
         const todayDateObj = new Date();
         const currentYearReal = todayDateObj.getFullYear();
         const currentMonthNumReal = todayDateObj.getMonth() + 1;
         const currentDateReal = todayDateObj.getDate();
         
-        // 時刻を0:00にリセットした今日のDateオブジェクト（比較用）
         const todayResetObj = new Date(currentYearReal, currentMonthNumReal - 1, currentDateReal);
 
         const viewYear = currentYearReal;
@@ -528,7 +533,7 @@
 
         function createTicket(weekNum, datesInWeek) {
             const startDay = datesInWeek[0];
-            const endDay = datesInWeek[6]; // この週の土曜日
+            const endDay = datesInWeek[6];
             const startM = monthNames[startDay.getMonth()].substring(0, 3);
             const endM = monthNames[endDay.getMonth()].substring(0, 3);
             
