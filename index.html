@@ -587,12 +587,15 @@
 
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
-                dayBox.onclick = () => {
-                    if (recordedData[dataKey]) { startPlayback([dataKey]); return; }
-                    
-                    // テスト時はこの条件分岐を消して openCameraScreen を呼ぶ
-                    if (isToday) { openCameraScreen(boxYear, boxMonth, boxDate); } else { if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); }
-                };
+                // ▼ 変更後（テスト用：空のマスなら、過去でも未来でもいつでも撮影できる！）
+dayBox.onclick = () => {
+    if (recordedData[dataKey]) {
+        startPlayback([dataKey]); 
+        return;
+    }
+    // エラーメッセージを消して、無条件でカメラを開く
+    openCameraScreen(boxYear, boxMonth, boxDate);
+};
                 
                 calendarElement.appendChild(dayBox); weekDatesArray.push(new Date(currentDate));
                 if (currentDate.getDay() === 6) { createTicket(weekNum, weekDatesArray); weekNum++; weekDatesArray = []; }
@@ -617,7 +620,8 @@
             const isWeekOver = todayResetObj > endDay; 
             
             // テスト時はここを const isViewable = true; にする
-            const isViewable = isLastDayRecorded || isWeekOver;
+            // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
+const isViewable = true;
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
