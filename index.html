@@ -601,23 +601,20 @@
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
                 dayBox.onclick = async () => {
-                    if (isToday) {
-                        const chunks = await getFullChunksForDate(dataKey);
-                        const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
-                        if (currentTotal < MAX_RECORD_TIME) {
-                            openCameraScreen(boxYear, boxMonth, boxDate);
-                            return;
-                        }
+                    // 【テスト用制限解除】当日以外でも現在の録画秒数をチェックする
+                    const chunks = await getFullChunksForDate(dataKey);
+                    const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
+                    
+                    // 20秒未満（未撮影または途中）なら、過去・未来問わずカメラを開く
+                    if (currentTotal < MAX_RECORD_TIME) {
+                        openCameraScreen(boxYear, boxMonth, boxDate);
+                        return;
                     }
                     
+                    // 20秒撮りきっている場合のみ再生へ
                     if (recordedData[dataKey]) { 
                         startPlayback([dataKey]); 
                         return; 
-                    }
-                    
-                    if (!isToday) { 
-                        if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); 
-                        else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); 
                     }
                 };
                 
@@ -640,7 +637,11 @@
             const recordedCount = validKeys.length;
 
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
-            const isLastDayRecorded = !!recordedData[lastDateKey]; const isWeekOver = todayResetObj > endDay; const isViewable = isLastDayRecorded || isWeekOver;
+            const isLastDayRecorded = !!recordedData[lastDateKey]; 
+            const isWeekOver = todayResetObj > endDay; 
+            
+            // 【テスト用制限解除】強制的に isViewable を true にして常に解放する
+            const isViewable = true;
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
