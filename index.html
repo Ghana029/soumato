@@ -558,14 +558,19 @@
 
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
-                dayBox.onclick = () => {
-                    initAudio(); // 音声エンジンを確実に起動
-                    if (recordedData[dataKey]) { startPlayback([dataKey]); return; }
-                    
-                    // ★テスト用の裏技：以下の2行を入れ替えると、過去や未来のマスでも強制的にカメラを開けます。
-                    if (isToday) { openCameraScreen(boxYear, boxMonth, boxDate); } else { if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); }
-                    // openCameraScreen(boxYear, boxMonth, boxDate); // ←テスト時はこちらを有効化
-                };
+                // ▼ 変更前（本来の厳密なルール：今日しか撮影できない）
+
+
+
+// ▼ 変更後（テスト用：空のマスなら、過去でも未来でもいつでも撮影できる！）
+dayBox.onclick = () => {
+    if (recordedData[dataKey]) {
+        startPlayback([dataKey]); 
+        return;
+    }
+    // エラーメッセージを消して、無条件でカメラを開く
+    openCameraScreen(boxYear, boxMonth, boxDate);
+};
                 
                 calendarElement.appendChild(dayBox);
                 weekDatesArray.push(new Date(currentDate));
