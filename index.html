@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>1 Year in 2 Hours</title>
+    <style>
+        /* 全体のテーマ：昔の映画館 */
+        body {
+            font-family: 'Times New Roman', serif;
+            background-color: #111;
+            color: #f4ebd0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            overscroll-behavior-y: none;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 400px;
+            height: 100dvh;
+            position: relative;
+            background-color: #1a1a1a;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 共通ボタン */
+        .back-btn {
+            background: none;
+            border: none;
+            color: #f4ebd0;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0;
+            letter-spacing: 1px;
+            width: 60px;
+            text-align: left;
+        }
+        .header-spacer { width: 60px; }
+
+        /* --- 1. 月選択画面（立体スクロール） --- */
+        #month-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .month-screen-header {
+            text-align: center;
+            padding: 30px 0 10px 0;
+            font-size: 18px;
+            letter-spacing: 4px;
+            z-index: 20;
+        }
+
+        #month-list {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .month-card {
+            position: absolute;
+            left: 0; right: 0; top: 0; bottom: 0;
+            margin: auto;
+            width: 85%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            background-color: #222;
+            border: 2px solid #444;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+            cursor: pointer;
+            
+            opacity: 0;
+            transform: translateY(0);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .month-card.active {
+            transform: translateY(0);
+            opacity: 1;
+            z-index: 10;
+            border-color: #f4ebd0;
+            pointer-events: auto;
+            filter: blur(0px) brightness(1);
+        }
+
+        .month-card.prev {
+            transform: translateY(-60%);
+            opacity: 0.85;
+            z-index: 5;
+            pointer-events: auto;
+            filter: blur(1px) brightness(0.75);
+        }
+
+        .month-card.next {
+            transform: translateY(60%);
+            opacity: 0.85;
+            z-index: 5;
+            pointer-events: auto;
+            filter: blur(1px) brightness(0.75);
+        }
+
+        .month-card.hidden-prev {
+            transform: translateY(-120%);
+            opacity: 0;
+        }
+        .month-card.hidden-next {
+            transform: translateY(120%);
+            opacity: 0;
+        }
+
+        .month-name {
+            font-size: 32px;
+            letter-spacing: 3px;
+            z-index: 2;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
+        }
+
+        .month-card.has-data::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, #4a3f35, #2a221d);
+            opacity: 0.7;
+            z-index: 1;
+        }
+
+        /* --- 2. ホーム画面（現実の暦カレンダー） --- */
+        #home-screen {
+            display: none; 
+            flex-direction: column;
+            height: 100dvh;
+        }
+
+        .home-header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        h2.screen-title {
+            margin: 0;
+            flex-grow: 1;
+            text-align: center;
+            font-size: 20px;
+            letter-spacing: 2px;
+            font-weight: normal;
+        }
+
+        #calendar-container {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            overscroll-behavior-y: auto;
+        }
+
+        .weekday-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        #calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        .day-box {
+            aspect-ratio: 1;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #888;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .day-box.empty {
+            background-color: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .day-box.today {
+            border: 2px solid #b22222;
+            color: #f4ebd0;
+            box-shadow: inset 0 0 15px rgba(178, 34, 34, 0.2);
+        }
+
+        .day-box.recorded {
+            background-color: #4a3f35;
+            color: #f4ebd0;
+            border-color: #665;
+        }
+        
+        .day-box.recorded::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .day-box span {
+            position: relative;
+            z-index: 1;
+        }
+
+        #tickets-area {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-bottom: 30px;
+        }
+
+        .ticket {
+            background-color: #f4ebd0;
+            color: #111;
+            border: 2px dashed #111;
+            border-radius: 8px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .ticket::before, .ticket::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            background-color: #1a1a1a;
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+        .ticket::before { left: -8px; }
+        .ticket::after { right: -8px; }
+
+        .ticket:hover {
+            transform: translateY(-2px);
+            background-color: #e8debf;
+        }
+
+        .ticket-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ticket-week {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .ticket-dates {
+            font-size: 11px;
+            color: #444;
+            margin-top: 4px;
+        }
+
+        .ticket-play {
+            font-size: 18px;
+        }
+
+        /* --- 3. 撮影画面 & 4. 再生画面 --- */
+        #camera-screen, #playback-screen {
+            display: none;
+            flex-direction: column;
+            height: 100dvh;
+            background-color: #000;
+        }
+
+        .camera-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #222;
+        }
+
+        #camera-date-display, #playback-date-display {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 16px;
+            letter-spacing: 2px;
+            color: #888;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #222;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        #camera-view, #playback-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #progress-container {
+            width: 100%;
+            height: 4px;
+            background-color: #333;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #b22222;
+            transition: width 0.1s linear;
+        }
+
+        .controls {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #record-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #b22222;
+            border: 4px solid #f4ebd0;
+            cursor: pointer;
+            outline: none;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #record-btn.recording {
+            border-radius: 10px;
+            transform: scale(0.9);
+        }
+
+        #record-btn:disabled {
+            background-color: #555;
+            border-color: #777;
+            cursor: not-allowed;
+        }
+        
+        .mock-text { position: absolute; color: #555; font-size: 12px; letter-spacing: 1px; z-index: 0; }
+        #camera-view { z-index: 1; }
+
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div id="month-screen">
+            <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
+            <div id="month-list"></div>
+        </div>
+
+        <div id="home-screen">
+            <header class="home-header">
+                <button class="back-btn" id="month-back-btn">&lt; BACK</button>
+                <h2 class="screen-title" id="month-title">June</h2>
+                <div class="header-spacer"></div>
+            </header>
+
+            <div id="calendar-container">
+                <div class="weekday-header">
+                    <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
+                </div>
+                <div id="calendar"></div>
+                <div id="tickets-area"></div>
+            </div>
+        </div>
+
+        <div id="camera-screen">
+            <header class="camera-header">
+                <button class="back-btn" id="camera-back-btn">&lt; BACK</button>
+                <div id="camera-date-display">REC</div>
+                <div class="header-spacer"></div>
+            </header>
+            
+            <div class="video-container">
+                <video id="camera-view" autoplay muted playsinline></video>
+                <div class="mock-text">CAMERA SETUP...</div>
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="record-btn"></button>
+            </div>
+        </div>
+
+        <div id="playback-screen">
+            <header class="camera-header">
+                <button class="back-btn" id="playback-back-btn">&lt; BACK</button>
+                <div id="playback-date-display">PLAY</div>
+                <div class="header-spacer"></div>
+            </header>
+            
+            <div class="video-container">
+                <video id="playback-view" controls playsinline></video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* === エンジニア側の処理 === */
+
+        const monthScreen = document.getElementById('month-screen');
+        const monthList = document.getElementById('month-list');
+        const homeScreen = document.getElementById('home-screen');
+        const cameraScreen = document.getElementById('camera-screen');
+        const playbackScreen = document.getElementById('playback-screen');
+        
+        const calendarElement = document.getElementById('calendar');
+        const ticketsArea = document.getElementById('tickets-area');
+        const monthTitle = document.getElementById('month-title');
+        
+        const cameraDateDisplay = document.getElementById('camera-date-display');
+        const playbackDateDisplay = document.getElementById('playback-date-display');
+        const cameraView = document.getElementById('camera-view');
+        const playbackView = document.getElementById('playback-view');
+        
+        const recordBtn = document.getElementById('record-btn');
+        const progressBar = document.getElementById('progress-bar');
+
+        const todayDateObj = new Date();
+        const currentYear = todayDateObj.getFullYear();
+        const currentMonthNumReal = todayDateObj.getMonth() + 1;
+        const currentDateReal = todayDateObj.getDate();
+
+        document.getElementById('current-year-display').textContent = currentYear;
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        let activeMonthIndex = currentMonthNumReal - 1; 
+        let cards = [];
+        let currentSelectedDay = null;
+        let selectedMonth = currentMonthNumReal;
+        
+        // ★録画データを保存するオブジェクト（今回は実際の動画URLが保存されます）
+        const recordedData = {};
+
+        function initMonthScreen() {
+            monthList.innerHTML = '';
+            cards = [];
+
+            for (let i = 0; i < 12; i++) {
+                const card = document.createElement('div');
+                card.className = 'month-card';
+                
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${currentYear}-${i + 1}-`));
+                if (hasDataInMonth) {
+                    card.classList.add('has-data');
+                }
+
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'month-name';
+                nameSpan.textContent = monthNames[i];
+                
+                card.appendChild(nameSpan);
+
+                card.onclick = () => {
+                    if (i === activeMonthIndex) {
+                        openMonth(i + 1);
+                    } else if (i === activeMonthIndex - 1 || i === activeMonthIndex + 1) {
+                        activeMonthIndex = i;
+                        updateMonthCards();
+                    }
+                };
+
+                monthList.appendChild(card);
+                cards.push(card);
+            }
+            updateMonthCards();
+        }
+
+        function updateMonthCards() {
+            cards.forEach((card, index) => {
+                card.className = 'month-card'; 
+                
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${currentYear}-${index + 1}-`));
+                if (hasDataInMonth) card.classList.add('has-data');
+
+                if (index === activeMonthIndex) {
+                    card.classList.add('active');
+                } else if (index === activeMonthIndex - 1) {
+                    card.classList.add('prev');
+                } else if (index === activeMonthIndex + 1) {
+                    card.classList.add('next');
+                } else if (index < activeMonthIndex - 1) {
+                    card.classList.add('hidden-prev');
+                } else if (index > activeMonthIndex + 1) {
+                    card.classList.add('hidden-next');
+                }
+            });
+        }
+
+        let isScrolling = false;
+        let startY = 0;
+
+        monthScreen.addEventListener('wheel', (e) => {
+            if (isScrolling) return;
+            if (e.deltaY > 20) {
+                if (activeMonthIndex < 11) {
+                    activeMonthIndex++;
+                    updateMonthCards();
+                    lockScroll();
+                }
+            } else if (e.deltaY < -20) {
+                if (activeMonthIndex > 0) {
+                    activeMonthIndex--;
+                    updateMonthCards();
+                    lockScroll();
+                }
+            }
+        });
+
+        monthScreen.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+        monthScreen.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; });
+        monthScreen.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const delta = startY - endY;
+            
+            if (delta > 30) {
+                if (activeMonthIndex < 11) { activeMonthIndex++; updateMonthCards(); }
+            } else if (delta < -30) {
+                if (activeMonthIndex > 0) { activeMonthIndex--; updateMonthCards(); }
+            }
+        });
+
+        function lockScroll() {
+            isScrolling = true;
+            setTimeout(() => { isScrolling = false; }, 400); 
+        }
+
+        function openMonth(month) {
+            selectedMonth = month;
+            monthTitle.textContent = monthNames[month - 1];
+            monthScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+            renderCalendarAndTickets();
+        }
+
+        function renderCalendarAndTickets() {
+            calendarElement.innerHTML = '';
+            ticketsArea.innerHTML = '';
+
+            const firstDay = new Date(currentYear, selectedMonth - 1, 1);
+            const lastDay = new Date(currentYear, selectedMonth, 0);
+            
+            const startDayOfWeek = firstDay.getDay();
+            const totalDays = lastDay.getDate();
+
+            let currentWeekNum = 1;
+            let weekStartDate = 1;
+
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const emptyBox = document.createElement('div');
+                emptyBox.className = 'day-box empty';
+                calendarElement.appendChild(emptyBox);
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dayBox = document.createElement('div');
+                dayBox.className = 'day-box';
+                const dataKey = `${currentYear}-${selectedMonth}-${day}`;
+                
+                const isToday = (currentYear === currentYear && selectedMonth === currentMonthNumReal && day === currentDateReal);
+                if (isToday) dayBox.classList.add('today');
+                if (recordedData[dataKey]) dayBox.classList.add('recorded');
+
+                const dayText = document.createElement('span');
+                dayText.textContent = day;
+                dayBox.appendChild(dayText);
+                
+                dayBox.onclick = () => {
+                    if (recordedData[dataKey]) {
+                        // ★録画済みの場合は再生画面を開く
+                        openPlaybackScreen(day, recordedData[dataKey]);
+                        return;
+                    }
+                    if (isToday) {
+                        openCameraScreen(day);
+                    } else {
+                        const boxDateObj = new Date(currentYear, selectedMonth - 1, day);
+                        const todayResetObj = new Date(currentYear, currentMonthNumReal - 1, currentDateReal);
+                        if (boxDateObj > todayResetObj) {
+                            alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。');
+                        } else {
+                            alert('過去の日は撮影できません。日々の記録は当日のみ可能です。');
+                        }
+                    }
+                };
+                
+                calendarElement.appendChild(dayBox);
+
+                const currentDayOfWeek = new Date(currentYear, selectedMonth - 1, day).getDay();
+                if (currentDayOfWeek === 6 || day === totalDays) {
+                    createTicket(currentWeekNum, weekStartDate, day);
+                    currentWeekNum++;
+                    weekStartDate = day + 1;
+                }
+            }
+        }
+
+        function createTicket(weekNum, startD, endD) {
+            const ticket = document.createElement('div');
+            ticket.className = 'ticket';
+            ticket.innerHTML = `
+                <div class="ticket-info">
+                    <div class="ticket-week">WEEK ${weekNum}</div>
+                    <div class="ticket-dates">${monthNames[selectedMonth-1].substring(0,3)} ${startD} - ${endD}</div>
+                </div>
+                <div class="ticket-play">▶</div>
+            `;
+            ticket.onclick = () => {
+                alert(`Week ${weekNum} の映像をつなげて再生する機能は、今後のアップデートで実装します！\n現在は日ごとの再生が可能です。`);
+            };
+            ticketsArea.appendChild(ticket);
+        }
+
+        /* === 実際の録画システムの構築 === */
+        let isRecording = false;
+        let totalRecordTime = 0;
+        let timerInterval;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        function openCameraScreen(day) {
+            currentSelectedDay = day;
+            cameraDateDisplay.textContent = `${monthNames[selectedMonth-1].substring(0,3)} ${day} - REC`;
+            homeScreen.style.display = 'none';
+            cameraScreen.style.display = 'flex';
+            
+            totalRecordTime = 0;
+            recordedChunks = [];
+            progressBar.style.width = '0%';
+            recordBtn.disabled = false;
+            recordBtn.classList.remove('recording');
+
+            startCamera();
+        }
+
+async function startCamera() {
+            try {
+                // 映像と音声の両方をリクエスト
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { aspectRatio: 16/9, facingMode: "environment" },
+                    audio: true
+                });
+                cameraView.srcObject = stream;
+
+                // MediaRecorderの初期化
+                mediaRecorder = new MediaRecorder(stream);
+                
+                // データが生成されたら配列に保存
+                mediaRecorder.ondataavailable = function(event) {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                // 録画完了（ストップ）時の処理
+                mediaRecorder.onstop = function() {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' }); 
+                    const videoURL = URL.createObjectURL(blob); 
+                    
+                    const dataKey = `${currentYear}-${selectedMonth}-${currentSelectedDay}`;
+                    recordedData[dataKey] = videoURL;
+                    
+                    stopCamera();
+                    cameraScreen.style.display = 'none';
+                    homeScreen.style.display = 'flex';
+                    renderCalendarAndTickets(); 
+                    initMonthScreen();
+                };
+
+            } catch (err) {
+                console.log("カメラ起動エラー詳細:", err);
+                // ★エラー時に画面でお知らせするように追加
+                alert("カメラまたはマイクの起動に失敗しました。\n・カメラのアクセスが許可されているか\n・Live Serverなどのローカルサーバー環境で開いているか（file:///では動きません）\nをご確認ください。");
+            }
+        }
+
+        function stopCamera() {
+            if (cameraView.srcObject) {
+                cameraView.srcObject.getTracks().forEach(t => t.stop());
+            }
+        }
+
+        // 録画ボタンの挙動（一時停止と再開を含む）
+        recordBtn.onclick = function() {
+            if (!mediaRecorder) return;
+
+            if (isRecording) {
+                // 録画中なら一時停止
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                clearInterval(timerInterval);
+                
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.pause(); // 録画をポーズ
+                }
+            } else {
+                // 一時停止中、または最初の録画開始
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                
+                if (mediaRecorder.state === 'inactive') {
+                    mediaRecorder.start(); // 最初からスタート
+                } else if (mediaRecorder.state === 'paused') {
+                    mediaRecorder.resume(); // 続きからスタート
+                }
+
+                // プログレスバーの更新（最大20秒）
+                timerInterval = setInterval(() => {
+                    totalRecordTime += 100;
+                    progressBar.style.width = (totalRecordTime / 20000) * 100 + '%';
+                    
+                    // 20秒に達したら自動で完了させる
+                    if (totalRecordTime >= 20000) {
+                        finishRecording();
+                    }
+                }, 100);
+            }
+        };
+
+        function finishRecording() {
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            clearInterval(timerInterval);
+            recordBtn.disabled = true;
+            
+            // stopを呼ぶと上で設定した mediaRecorder.onstop が発火し保存される
+            if (mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+        }
+
+        // --- 再生（プレイバック）画面の処理 ---
+        function openPlaybackScreen(day, videoURL) {
+            playbackDateDisplay.textContent = `${monthNames[selectedMonth-1].substring(0,3)} ${day} - PLAY`;
+            playbackView.src = videoURL; // 保存した動画URLをセット
+            
+            homeScreen.style.display = 'none';
+            playbackScreen.style.display = 'flex';
+            
+            playbackView.play(); // 自動再生
+        }
+
+        document.getElementById('playback-back-btn').onclick = () => {
+            playbackView.pause();
+            playbackView.src = ""; // メモリ節約
+            playbackScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+        };
+
+        // --- ナビゲーション戻る処理 ---
+        document.getElementById('camera-back-btn').onclick = () => {
+            isRecording = false;
+            clearInterval(timerInterval);
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop(); // 途中でやめた場合はデータが残る可能性がありますが、一旦ストップします
+            }
+            stopCamera();
+            cameraScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+        };
+
+        document.getElementById('month-back-btn').onclick = () => {
+            homeScreen.style.display = 'none';
+            monthScreen.style.display = 'flex';
+            activeMonthIndex = selectedMonth - 1;
+            updateMonthCards();
+        };
+
+        // アプリ起動
+        initMonthScreen();
+
+    </script>
+</body>
+</html>
