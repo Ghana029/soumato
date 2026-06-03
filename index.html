@@ -142,10 +142,8 @@
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         #playback-screen .video-container { margin: 0; position: relative; }
         
-        /* ★標準再生バーを完全に消去し、タップでの縦長化（フルスクリーン化）をガード */
         #playback-view { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
         
-        /* ★追加：再生時の日付焼き付け用オーバーレイ */
         #playback-date-overlay {
             position: absolute; bottom: 20px; right: 25px;
             color: rgba(244, 235, 208, 0.85); font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold;
@@ -259,26 +257,46 @@
 
     <script>
         /* =========================================
-           1. データベース（IndexedDB）操作
+           1. 例外安全な初期設定取得（シークレットモード対策）
+        ========================================= */
+        let appStartMonth = 1;
+        let showWatermark = true;
+
+        try {
+            appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
+            showWatermark = localStorage.getItem('showWatermark') !== 'false';
+        } catch (e) {
+            console.warn("LocalStorageへのアクセスが制限されています。設定は一時的に保持されます。", e);
+        }
+
+        /* =========================================
+           2. データベース（IndexedDB）操作
         ========================================= */
         const dbName = 'OneYearInTwoHoursDB_v3';
         const storeName = 'videos';
-        let db;
+        let db = null;
 
         function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open(dbName, 1);
-                request.onupgradeneeded = (e) => {
-                    db = e.target.result;
-                    if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName); 
-                };
-                request.onsuccess = (e) => { db = e.target.result; resolve(); };
-                request.onerror = (e) => reject(request.error);
+                try {
+                    const request = indexedDB.open(dbName, 1);
+                    request.onupgradeneeded = (e) => {
+                        const database = e.target.result;
+                        if (!database.objectStoreNames.contains(storeName)) {
+                            database.createObjectStore(storeName); 
+                        }
+                    };
+                    request.onsuccess = (e) => { db = e.target.result; resolve(); };
+                    request.onerror = (e) => reject(request.error);
+                } catch(err) {
+                    reject(err);
+                }
             });
         }
 
         function saveVideoToDB(dateKey, blob) {
             return new Promise((resolve, reject) => {
+                if (!db) { resolve(); return; }
                 const tx = db.transaction(storeName, 'readwrite');
                 const store = tx.objectStore(storeName);
                 store.put(blob, dateKey);
@@ -289,6 +307,7 @@
 
         function getVideoFromDB(dateKey) {
             return new Promise((resolve, reject) => {
+                if (!db) { resolve(null); return; }
                 const tx = db.transaction(storeName, 'readonly');
                 const store = tx.objectStore(storeName);
                 const request = store.get(dateKey);
@@ -299,6 +318,7 @@
 
         function getAllRecordedKeys() {
             return new Promise((resolve, reject) => {
+                if (!db) { resolve([]); return; }
                 const tx = db.transaction(storeName, 'readonly');
                 const store = tx.objectStore(storeName);
                 const request = store.getAllKeys();
@@ -309,13 +329,17 @@
 
         document.getElementById('reset-db-btn').onclick = () => {
             if(confirm("※注意※\nすべての録画データを消去してリセットしますか？")) {
-                const req = indexedDB.deleteDatabase(dbName);
-                req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); };
+                try {
+                    const req = indexedDB.deleteDatabase(dbName);
+                    req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); };
+                } catch(e) {
+                    alert("リセットに失敗しました。");
+                }
             }
         };
 
         /* =========================================
-           2. アプリのUIとロジック
+           3. アプリのUIとロジック
         ========================================= */
         const monthScreen = document.getElementById('month-screen');
         const monthList = document.getElementById('month-list');
@@ -351,9 +375,6 @@
         document.getElementById('current-year-display').textContent = viewYear;
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         
-        let appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
-        let showWatermark = localStorage.getItem('showWatermark') !== 'false';
-        
         let activeMonthIndex = 0; 
         let cards = [];
         let monthSequence = []; 
@@ -370,12 +391,12 @@
                 await initDB();
                 const keys = await getAllRecordedKeys();
                 keys.forEach(key => { recordedData[key] = true; });
-                initMonthScreen();
-                buildSettingsUI();
             } catch (err) {
-                console.error("DB初期化エラー", err);
-                initMonthScreen();
+                console.warn("データベースの接続に制限があります。録画データはセッション間のみ保持されます。", err);
             }
+            // エラーの有無にかかわらず描画を確実に実行
+            initMonthScreen();
+            buildSettingsUI();
         }
 
         function initMonthScreen() {
@@ -467,9 +488,9 @@
                 if(i === appStartMonth) btn.classList.add('selected');
                 btn.textContent = `${i}月`;
                 btn.onclick = () => {
-                    localStorage.setItem('appStartMonth', i);
+                    try { localStorage.setItem('appStartMonth', i); } catch(e){}
                     appStartMonth = i;
-                    document.querySelectorAll('.month-opt-btn').forEach(b => b.classList.remove('selected'));
+                    document.querySelectorAll('#month-select-container .month-opt-btn').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
                     initMonthScreen(); 
                 };
@@ -478,15 +499,20 @@
 
             const wOnBtn = document.getElementById('watermark-on-btn');
             const wOffBtn = document.getElementById('watermark-off-btn');
+            
+            wOnBtn.classList.remove('selected');
+            wOffBtn.classList.remove('selected');
             if(showWatermark) wOnBtn.classList.add('selected');
             else wOffBtn.classList.add('selected');
 
             wOnBtn.onclick = () => {
-                showWatermark = true; localStorage.setItem('showWatermark', 'true');
+                showWatermark = true;
+                try { localStorage.setItem('showWatermark', 'true'); } catch(e){}
                 wOnBtn.classList.add('selected'); wOffBtn.classList.remove('selected');
             };
             wOffBtn.onclick = () => {
-                showWatermark = false; localStorage.setItem('showWatermark', 'false');
+                showWatermark = false;
+                try { localStorage.setItem('showWatermark', 'false'); } catch(e){}
                 wOffBtn.classList.add('selected'); wOnBtn.classList.remove('selected');
             };
         }
@@ -621,7 +647,7 @@ const isViewable = true;
             ticketsArea.appendChild(ticket);
         }
 
-        /* === 3. 撮影システム（生のカメラ映像を100%確実に録画） === */
+        /* === 3. 撮影システム === */
         let isRecording = false;
         let totalRecordTime = 0;
         let timerInterval;
@@ -641,7 +667,6 @@ const isViewable = true;
 
         async function startCamera() {
             try {
-                // ★スマホでの録画トラブルを防ぐため、生のカメラストリームを直接取得・録画する
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { aspectRatio: 16/9, facingMode: "environment" }, 
                     audio: true 
@@ -674,7 +699,7 @@ const isViewable = true;
                 if (mediaRecorder.state === 'recording') mediaRecorder.pause(); 
             } else {
                 isRecording = true; recordBtn.classList.add('recording');
-                if (mediaRecorder.state === 'inactive') mediaRecorder.start(200); // 0.2秒ごとに刻んで保存
+                if (mediaRecorder.state === 'inactive') mediaRecorder.start(200); 
                 else if (mediaRecorder.state === 'paused') mediaRecorder.resume(); 
 
                 timerInterval = setInterval(() => {
@@ -695,7 +720,7 @@ const isViewable = true;
             renderCalendarAndTickets(); initMonthScreen();
         };
 
-        /* === 4. 再生画面（インライン＆日付HTMLオーバーレイ制御） === */
+        /* === 4. 再生画面（インライン＆日付HTML制御） === */
         let playlistUrls = [];
         let currentPlayIndex = 0;
 
@@ -727,7 +752,7 @@ const isViewable = true;
                 playbackDateDisplay.textContent = `${monthNames[parseInt(parts[1])-1].substring(0,3)} ${parts[2]} - PLAY`;
             }
 
-            // ★日付を画面に重ねて表示（ON/OFF対応）
+            // 日付焼き付け設定の反映
             if (showWatermark) {
                 playbackDateOverlay.textContent = currentItem.dateStr;
                 playbackDateOverlay.style.display = 'block';
@@ -740,7 +765,6 @@ const isViewable = true;
             playbackView.onended = () => { currentPlayIndex++; playNextInPlaylist(); };
         }
 
-        // タップした時に再生/一時停止をトグルするUI
         playbackContainer.onclick = () => {
             if (playbackView.paused) playbackView.play();
             else playbackView.pause();
@@ -754,7 +778,7 @@ const isViewable = true;
 
         document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
 
-        /* === 5. 書き出しシステム（常時無音信号＆16:9切り抜き＆日付焼き付け） === */
+        /* === 5. 書き出しシステム（常時無音パルスによるフリーズ完全防止） === */
         const exportTitle = document.getElementById('export-title');
         const exportDesc = document.getElementById('export-desc');
         const exportProgressBar = document.getElementById('export-progress-bar');
@@ -762,8 +786,9 @@ const isViewable = true;
         const exportDownloadLink = document.getElementById('export-download-link');
         const exportReturnBtn = document.getElementById('export-return-btn');
         
+        const recordCanvas = document.getElementById('record-canvas');
+        recordCanvas.width = 1280; recordCanvas.height = 720;
         const recordCanvasCtx = recordCanvas.getContext('2d');
-        let drawFrameId;
 
         async function startExport(keys, dateLabel) {
             homeScreen.style.display = 'none';
@@ -776,30 +801,31 @@ const isViewable = true;
             exportDownloadLink.style.display = "none";
             exportReturnBtn.style.display = "none";
 
-            // 裏で動画をリレーするためのビデオ要素
             const exportVideo = document.createElement('video');
             exportVideo.playsInline = true;
-            exportVideo.muted = false; // 音声を抽出するため
+            exportVideo.muted = false; 
 
-            // ★防波堤：オーディオコンテキストとダミー音声の仕込み（結合フリーズ対策）
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const dest = audioCtx.createMediaStreamDestination();
+            // ★防波堤：常時無音オーディオ信号の生成（動画切り替え時のフリーズを完全にシャットアウト）
+            let audioCtx = null;
+            let dest = null;
+            let dummyOsc = null;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                dest = audioCtx.createMediaStreamDestination();
 
-            // 人間には聴こえない極小の音を常時流し、録画機への音声パルスを絶対に途切れさせない
-            const dummyOsc = audioCtx.createOscillator();
-            const dummyGain = audioCtx.createGain();
-            dummyGain.gain.value = 0.0001; 
-            dummyOsc.connect(dummyGain);
-            dummyGain.connect(dest);
-            dummyOsc.start();
+                dummyOsc = audioCtx.createOscillator();
+                const dummyGain = audioCtx.createGain();
+                dummyGain.gain.value = 0.0001; // 人間には聴こえない極小ボリューム
+                dummyOsc.connect(dummyGain);
+                dummyGain.connect(dest);
+                dummyOsc.start();
 
-            // ビデオ要素の音声ノードを接続
-            const source = audioCtx.createMediaElementSource(exportVideo);
-            source.connect(dest);
+                const source = audioCtx.createMediaElementSource(exportVideo);
+                source.connect(dest);
+            } catch(e) { console.log("AudioContext Error:", e); }
 
-            // Canvas（1280x720）の映像と、途切れない音声トラックを合体
             const exportStream = recordCanvas.captureStream(30);
-            dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
+            if (dest) dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
 
             const exportRecorder = new MediaRecorder(exportStream);
             const exportChunks = [];
@@ -809,11 +835,10 @@ const isViewable = true;
             let isExporting = true;
             let exportDateStr = "";
 
-            // ★エクスポート専用の超強力なCanvas描画ループ
+            // エクスポート用描画ループ
             function exportDrawLoop() {
                 if (!isExporting) return;
                 
-                // 動画の隙間を真っ黒で埋める（フリーズ完全防止）
                 recordCanvasCtx.fillStyle = '#000';
                 recordCanvasCtx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
 
@@ -824,7 +849,7 @@ const isViewable = true;
                         if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                         recordCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
                         
-                        // 設定がONの場合、ここで動画ファイル本体に日付を焼き付ける
+                        // 動画ファイルそのものに日付を物理的に焼き付ける（ONの時のみ）
                         if (showWatermark && exportDateStr) {
                             recordCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.85)";
                             recordCanvasCtx.font = "bold 36px 'Courier New', monospace";
@@ -847,7 +872,7 @@ const isViewable = true;
 
                 if (currentIndex >= keys.length) {
                     isExporting = false; 
-                    setTimeout(() => { exportRecorder.stop(); }, 500); // 最後の余韻を少し残して停止
+                    setTimeout(() => { exportRecorder.stop(); }, 500); 
                     return;
                 }
                 
@@ -855,27 +880,27 @@ const isViewable = true;
                 exportDateStr = `${parts[0]}.${parts[1].padStart(2, '0')}.${parts[2].padStart(2, '0')}`;
 
                 const blob = await getVideoFromDB(keys[currentIndex]);
-                exportVideo.src = URL.createObjectURL(blob);
-                
-                exportVideo.oncanplay = () => {
-                    exportVideo.play().catch(e => {
-                        console.error("Export play error:", e);
+                if (blob) {
+                    exportVideo.src = URL.createObjectURL(blob);
+                    exportVideo.oncanplay = () => {
+                        exportVideo.play().catch(e => {
+                            URL.revokeObjectURL(exportVideo.src);
+                            currentIndex++; playNextForExport(); 
+                        });
+                    };
+                    exportVideo.onended = () => {
                         URL.revokeObjectURL(exportVideo.src);
-                        currentIndex++; playNextForExport(); 
-                    });
-                };
-                
-                exportVideo.onended = () => {
-                    URL.revokeObjectURL(exportVideo.src);
-                    currentIndex++;
-                    playNextForExport();
-                };
+                        currentIndex++; playNextForExport();
+                    };
+                } else {
+                    currentIndex++; playNextForExport();
+                }
             }
 
             exportRecorder.onstop = () => {
                 exportProgressBar.style.width = "100%";
-                dummyOsc.stop();
-                audioCtx.close();
+                if(dummyOsc) dummyOsc.stop();
+                if(audioCtx) audioCtx.close();
                 
                 setTimeout(() => {
                     const mime = exportRecorder.mimeType || '';
@@ -917,6 +942,7 @@ const isViewable = true;
             updateMonthCards();
         };
 
+        // アプリ起動
         startApp();
 
     </script>
