@@ -123,14 +123,16 @@
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
         .video-element { width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
         
-        /* ★修正：ウォーターマークの主張を弱める（細く、小さく、右下スレスレ、半透明に） */
+        /* ★修正：アプリ内で見える日付と、書き出し用Canvasの日付の位置・サイズを厳密に計算して一致させる */
         .watermark-overlay {
-            position: absolute; bottom: 8px; right: 12px;
-            color: rgba(244, 235, 208, 0.5); /* 色を薄く */
-            font-size: 13px; /* 少し小さく */
-            font-weight: normal; /* 細く */
+            position: absolute; 
+            bottom: 12px;  /* ここが12pxなら、Canvas側は比率を合わせて40px程度に */
+            right: 15px;   /* ここが15pxなら、Canvas側は比率を合わせて50px程度に */
+            color: rgba(244, 235, 208, 0.6); 
+            font-size: 13px; /* 控えめなサイズ */
+            font-weight: normal; 
             letter-spacing: 1px; 
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* 影も弱く */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.6); /* 影も少し控えめに */
             z-index: 30; pointer-events: none; display: none;
         }
 
@@ -171,6 +173,21 @@
         }
         .settings-title { font-size: 16px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 20px; margin-top: 30px; }
         .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 20px; }
+        
+        /* ★追加：月選択用のグリッドレイアウト */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 85%;
+            max-width: 320px;
+            margin-bottom: 20px;
+        }
+        .settings-grid .month-opt-btn {
+            padding: 12px 0;
+            text-align: center;
+        }
+
         .month-opt-btn { background-color: #222; border: 1px solid #444; color: #888; padding: 10px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
         .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; cursor: pointer; border-radius: 20px; margin-top: 40px; }
@@ -257,7 +274,7 @@
             <div class="month-select-container" id="font-select-container"></div>
 
             <div class="settings-title">START MONTH</div>
-            <div class="month-select-container" id="month-select-container"></div>
+            <div class="settings-grid" id="month-select-container"></div>
             
             <div class="settings-title">DATE WATERMARK</div>
             <div class="month-select-container">
@@ -287,7 +304,6 @@
         /* =========================================
            1. 設定データの読み込みと初期化（フォント対応）
         ========================================= */
-        // ★修正：Monospaceを削除し、SerifとSans-Serifの2択に
         const fontOptions = [
             { label: 'Serif', value: "'Times New Roman', 'Noto Serif JP', serif" },
             { label: 'Sans-Serif', value: "'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif" }
@@ -303,9 +319,7 @@
             appFont = localStorage.getItem('appFont') || fontOptions[0].value;
             // 以前のMonospace設定が残っていた場合のセーフティ
             if (appFont.includes('monospace')) appFont = fontOptions[0].value;
-        } catch (e) {
-            console.warn("LocalStorage制限");
-        }
+        } catch (e) {}
 
         document.documentElement.style.setProperty('--app-font', appFont);
 
@@ -429,7 +443,7 @@
                 await initDB();
                 const keys = await getAllRecordedKeys();
                 keys.forEach(key => { recordedData[key] = true; });
-            } catch (err) { console.warn("DBエラー", err); }
+            } catch (err) { console.warn("DBエラー"); }
             initMonthScreen();
             buildSettingsUI();
         }
@@ -667,7 +681,7 @@ const isViewable = true;
 
         async function startCamera() {
             try {
-                // ★マイク音声（audio: true）を復活
+                // ★マイク音声（audio: true）で環境音をそのまま拾う
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { aspectRatio: 16/9, facingMode: "environment" }, 
                     audio: true 
@@ -785,9 +799,9 @@ const isViewable = true;
 
             const exportVideo = document.createElement('video');
             exportVideo.playsInline = true; 
-            exportVideo.muted = false; // ★実際の音声を抽出するためミュート解除
+            exportVideo.muted = false; // ★実際の環境音を抽出するためミュート解除
 
-            // ★環境音抽出 ＆ フリーズ防止の無音パルス
+            // 音声抽出とフリーズ防止の無音パルス
             let audioCtx = null;
             let dest = null;
             let dummyOsc = null;
@@ -802,7 +816,6 @@ const isViewable = true;
                 dummyGain.connect(dest);
                 dummyOsc.start();
 
-                // 動画自体の音声ノードを接続し、動画の音とダミー音を合体させる
                 const source = audioCtx.createMediaElementSource(exportVideo);
                 source.connect(dest);
             } catch(e) { console.log("AudioContext Error:", e); }
@@ -818,7 +831,7 @@ const isViewable = true;
 
             let currentIndex = 0; let isExporting = true; let exportDateStr = "";
 
-            // 現像キャンバスへの描画（ここで16:9切り抜きと控えめな日付焼き付けを行う）
+            // 現像キャンバスへの描画（16:9切り抜きと控えめな日付焼き付け）
             function exportDrawLoop() {
                 if (!isExporting) return;
                 exportCanvasCtx.fillStyle = '#000'; exportCanvasCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
@@ -830,14 +843,16 @@ const isViewable = true;
                         if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                         exportCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, exportCanvas.width, exportCanvas.height);
                         
-                        // ★修正：日付のデザインを控えめに（右下スレスレ、細く、少し小さく、半透明に）
+                        // ★日付をアプリ画面（CSS）の見た目と完全に一致させる計算
                         if (showWatermark && exportDateStr) {
                             exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.6)";
-                            exportCanvasCtx.font = `normal 22px ${appFont}`;
+                            exportCanvasCtx.font = `normal 46px ${appFont}`;
                             exportCanvasCtx.textAlign = "right";
-                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.5)";
-                            exportCanvasCtx.shadowBlur = 4;
-                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 20, exportCanvas.height - 15);
+                            exportCanvasCtx.textBaseline = "bottom"; 
+                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.6)";
+                            exportCanvasCtx.shadowBlur = 6;
+                            
+                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 50, exportCanvas.height - 40);
                             exportCanvasCtx.shadowBlur = 0;
                         }
                     }
