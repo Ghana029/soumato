@@ -123,16 +123,16 @@
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
         .video-element { width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
         
-        /* ★修正：アプリ内で見える日付と、書き出し用Canvasの日付の位置・サイズを厳密に計算して一致させる */
+        /* ★修正：日付の主張をさらに弱める（位置をより隅へ、不透明度をさらに下げて0.35に） */
         .watermark-overlay {
             position: absolute; 
-            bottom: 12px;  /* ここが12pxなら、Canvas側は比率を合わせて40px程度に */
-            right: 15px;   /* ここが15pxなら、Canvas側は比率を合わせて50px程度に */
-            color: rgba(244, 235, 208, 0.6); 
-            font-size: 13px; /* 控えめなサイズ */
+            bottom: 6px;  
+            right: 10px;   
+            color: rgba(244, 235, 208, 0.35); 
+            font-size: 11px; 
             font-weight: normal; 
             letter-spacing: 1px; 
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.6); /* 影も少し控えめに */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
             z-index: 30; pointer-events: none; display: none;
         }
 
@@ -174,7 +174,6 @@
         .settings-title { font-size: 16px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 20px; margin-top: 30px; }
         .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 20px; }
         
-        /* ★追加：月選択用のグリッドレイアウト */
         .settings-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -192,9 +191,13 @@
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
         .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; cursor: pointer; border-radius: 20px; margin-top: 40px; }
 
-        /* --- 7. 書き出し画面 --- */
+        /* --- 7. 書き出し（エクスポート）画面 --- */
         #export-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; background-color: #0a0a0a; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; }
         
+        /* ★修正：タイトルと説明文、動画モニターの間隔を綺麗に等間隔（15px / 20px）に調整 */
+        #export-screen .finish-title { font-size: 24px; margin-bottom: 15px; }
+        #export-screen .finish-desc { font-size: 12px; margin-bottom: 20px; }
+
         #export-canvas {
             width: 80%; max-width: 320px; aspect-ratio: 16 / 9;
             background-color: #000; border-radius: 4px; box-shadow: 0 5px 25px rgba(0,0,0,0.8);
@@ -203,7 +206,15 @@
 
         #export-progress-container { width: 60%; height: 4px; background-color: #333; margin-bottom: 40px; border-radius: 2px; overflow: hidden; }
         #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
-        #export-download-link { text-decoration: none; margin-bottom: 20px; }
+        
+        /* ★修正：リンクタグをブロック化し、2つのボタンの横幅（220px）と上下マージンを揃える */
+        #export-download-link { text-decoration: none; display: inline-block; margin-bottom: 0; }
+        #export-screen .finish-btn {
+            width: 220px;
+            box-sizing: border-box;
+            margin: 6px 0;
+            text-align: center;
+        }
 
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
 
@@ -290,7 +301,7 @@
             <div class="finish-title" id="export-title" style="font-size:24px;">EXPORTING...</div>
             <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください</div>
             
-            <canvas id="export-canvas" width="1280" height="720"></canvas>
+            <canvas id="export-canvas" width='1280' height='720'></canvas>
             
             <div id="export-progress-container"><div id="export-progress-bar"></div></div>
             <a id="export-download-link" style="display: none;"><button class="finish-btn">SAVE TO DEVICE</button></a>
@@ -302,7 +313,7 @@
 
     <script>
         /* =========================================
-           1. 設定データの読み込みと初期化（フォント対応）
+           1. 設定データの読み込みと初期化
         ========================================= */
         const fontOptions = [
             { label: 'Serif', value: "'Times New Roman', 'Noto Serif JP', serif" },
@@ -317,14 +328,13 @@
             appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
             showWatermark = localStorage.getItem('showWatermark') !== 'false';
             appFont = localStorage.getItem('appFont') || fontOptions[0].value;
-            // 以前のMonospace設定が残っていた場合のセーフティ
             if (appFont.includes('monospace')) appFont = fontOptions[0].value;
         } catch (e) {}
 
         document.documentElement.style.setProperty('--app-font', appFont);
 
         /* =========================================
-           2. データベース（IndexedDB）操作
+           2. データベース操作
         ========================================= */
         const dbName = 'OneYearInTwoHoursDB_v6';
         const storeName = 'videos';
@@ -336,9 +346,7 @@
                     const request = indexedDB.open(dbName, 1);
                     request.onupgradeneeded = (e) => {
                         const database = e.target.result;
-                        if (!database.objectStoreNames.contains(storeName)) {
-                            database.createObjectStore(storeName); 
-                        }
+                        if (!database.objectStoreNames.contains(storeName)) { database.createObjectStore(storeName); }
                     };
                     request.onsuccess = (e) => { db = e.target.result; resolve(); };
                     request.onerror = (e) => reject(request.error);
@@ -381,10 +389,7 @@
 
         document.getElementById('reset-db-btn').onclick = () => {
             if(confirm("※注意※\nすべての録画データを消去してリセットしますか？")) {
-                try {
-                    const req = indexedDB.deleteDatabase(dbName);
-                    req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); };
-                } catch(e) { alert("リセットに失敗しました。"); }
+                try { const req = indexedDB.deleteDatabase(dbName); req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); }; } catch(e) { alert("リセットに失敗しました。"); }
             }
         };
 
@@ -449,38 +454,25 @@
         }
 
         function initMonthScreen() {
-            monthList.innerHTML = '';
-            cards = [];
-            monthSequence = [];
-            for (let i = 0; i < 12; i++) {
-                let m = ((appStartMonth - 1 + i) % 12) + 1;
-                monthSequence.push(m);
-            }
+            monthList.innerHTML = ''; cards = []; monthSequence = [];
+            for (let i = 0; i < 12; i++) { let m = ((appStartMonth - 1 + i) % 12) + 1; monthSequence.push(m); }
             activeMonthIndex = monthSequence.indexOf(currentMonthNumReal);
             if (activeMonthIndex === -1) activeMonthIndex = 0;
 
             for (let i = 0; i < 12; i++) {
                 let targetMonthNum = monthSequence[i];
-                const card = document.createElement('div');
-                card.className = 'month-card';
+                const card = document.createElement('div'); card.className = 'month-card';
+                let targetYearForCard = viewYear; if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1; 
+                if (Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`))) card.classList.add('has-data');
                 
-                let targetYearForCard = viewYear;
-                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1; 
-                
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
-                if (hasDataInMonth) card.classList.add('has-data');
-                
-                const nameSpan = document.createElement('div');
-                nameSpan.className = 'month-name';
-                nameSpan.textContent = monthNames[targetMonthNum - 1];
+                const nameSpan = document.createElement('div'); nameSpan.className = 'month-name'; nameSpan.textContent = monthNames[targetMonthNum - 1];
                 card.appendChild(nameSpan);
 
                 card.onclick = () => {
                     if (i === activeMonthIndex) { openMonth(targetMonthNum, targetYearForCard); } 
                     else if (i === activeMonthIndex - 1 || i === activeMonthIndex + 1) { activeMonthIndex = i; updateMonthCards(); }
                 };
-                monthList.appendChild(card);
-                cards.push(card);
+                monthList.appendChild(card); cards.push(card);
             }
             updateMonthCards();
         }
@@ -488,11 +480,8 @@
         function updateMonthCards() {
             cards.forEach((card, index) => {
                 card.className = 'month-card'; 
-                let targetMonthNum = monthSequence[index];
-                let targetYearForCard = viewYear;
-                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1;
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
-                if (hasDataInMonth) card.classList.add('has-data');
+                let targetMonthNum = monthSequence[index]; let targetYearForCard = viewYear; if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1;
+                if (Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`))) card.classList.add('has-data');
 
                 if (index === activeMonthIndex) card.classList.add('active');
                 else if (index === activeMonthIndex - 1) card.classList.add('prev');
@@ -521,16 +510,13 @@
         document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
 
         function buildSettingsUI() {
-            const fontContainer = document.getElementById('font-select-container');
-            fontContainer.innerHTML = '';
+            const fontContainer = document.getElementById('font-select-container'); fontContainer.innerHTML = '';
             fontOptions.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'month-opt-btn';
+                const btn = document.createElement('button'); btn.className = 'month-opt-btn';
                 if(opt.value === appFont) btn.classList.add('selected');
                 btn.textContent = opt.label;
                 btn.onclick = () => {
-                    appFont = opt.value;
-                    try { localStorage.setItem('appFont', appFont); } catch(e){}
+                    appFont = opt.value; try { localStorage.setItem('appFont', appFont); } catch(e){}
                     document.documentElement.style.setProperty('--app-font', appFont);
                     document.querySelectorAll('#font-select-container .month-opt-btn').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
@@ -538,36 +524,30 @@
                 fontContainer.appendChild(btn);
             });
 
-            const monthContainer = document.getElementById('month-select-container');
-            monthContainer.innerHTML = '';
+            const monthContainer = document.getElementById('month-select-container'); monthContainer.innerHTML = '';
             for(let i=1; i<=12; i++) {
-                const btn = document.createElement('button');
-                btn.className = 'month-opt-btn';
+                const btn = document.createElement('button'); btn.className = 'month-opt-btn';
                 if(i === appStartMonth) btn.classList.add('selected');
                 btn.textContent = `${i}月`;
                 btn.onclick = () => {
                     try { localStorage.setItem('appStartMonth', i); } catch(e){}
                     appStartMonth = i;
                     document.querySelectorAll('#month-select-container .month-opt-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    initMonthScreen(); 
+                    btn.classList.add('selected'); initMonthScreen(); 
                 };
                 monthContainer.appendChild(btn);
             }
 
-            const wOnBtn = document.getElementById('watermark-on-btn');
-            const wOffBtn = document.getElementById('watermark-off-btn');
+            const wOnBtn = document.getElementById('watermark-on-btn'); const wOffBtn = document.getElementById('watermark-off-btn');
             wOnBtn.classList.remove('selected'); wOffBtn.classList.remove('selected');
             if(showWatermark) wOnBtn.classList.add('selected'); else wOffBtn.classList.add('selected');
 
             wOnBtn.onclick = () => {
-                showWatermark = true;
-                try { localStorage.setItem('showWatermark', 'true'); } catch(e){}
+                showWatermark = true; try { localStorage.setItem('showWatermark', 'true'); } catch(e){}
                 wOnBtn.classList.add('selected'); wOffBtn.classList.remove('selected');
             };
             wOffBtn.onclick = () => {
-                showWatermark = false;
-                try { localStorage.setItem('showWatermark', 'false'); } catch(e){}
+                showWatermark = false; try { localStorage.setItem('showWatermark', 'false'); } catch(e){}
                 wOffBtn.classList.add('selected'); wOnBtn.classList.remove('selected');
             };
         }
@@ -630,12 +610,9 @@ dayBox.onclick = () => {
             const recordedCount = validKeys.length;
 
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
-            const isLastDayRecorded = !!recordedData[lastDateKey]; 
-            const isWeekOver = todayResetObj > endDay; 
-            
-            // テスト時はここを const isViewable = true; にする
-            // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
+            const isLastDayRecorded = !!recordedData[lastDateKey]; const isWeekOver = todayResetObj > endDay; // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
 const isViewable = true;
+
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
@@ -653,15 +630,12 @@ const isViewable = true;
                 playBtn.onclick = (e) => { e.stopPropagation(); startPlayback(validKeys); };
                 saveBtn.onclick = (e) => { e.stopPropagation(); startExport(validKeys, dateLabel); };
                 ticket.onclick = () => { startPlayback(validKeys); };
-            } else if (isViewable && recordedCount === 0) {
-                ticket.onclick = () => alert('この週には記録がありません。');
-            } else {
-                ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
-            }
+            } else if (isViewable && recordedCount === 0) { ticket.onclick = () => alert('この週には記録がありません。');
+            } else { ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。'); }
             ticketsArea.appendChild(ticket);
         }
 
-        /* === 5. 撮影システム（環境音ON・生データ保存） === */
+        /* === 5. 撮影システム === */
         let isRecording = false; let totalRecordTime = 0; let timerInterval; let mediaRecorder; let recordedChunks = [];
         const MAX_RECORD_TIME = 20000;
 
@@ -681,11 +655,7 @@ const isViewable = true;
 
         async function startCamera() {
             try {
-                // ★マイク音声（audio: true）で環境音をそのまま拾う
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { aspectRatio: 16/9, facingMode: "environment" }, 
-                    audio: true 
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { aspectRatio: 16/9, facingMode: "environment" }, audio: true });
                 cameraView.srcObject = stream;
 
                 mediaRecorder = new MediaRecorder(stream);
@@ -698,7 +668,7 @@ const isViewable = true;
                     catch(e) { console.error("保存失敗", e); alert("動画の保存に失敗しました。"); }
                     stopCamera(); cameraScreen.style.display = 'none'; finishScreen.style.display = 'flex';
                 };
-            } catch (err) { alert("カメラの起動に失敗しました。アクセスを許可してください。"); }
+            } catch (err) { alert("カメラの起動に失敗しました。"); }
         }
 
         function stopCamera() { if (cameraView.srcObject) cameraView.srcObject.getTracks().forEach(t => t.stop()); }
@@ -731,7 +701,7 @@ const isViewable = true;
             renderCalendarAndTickets(); initMonthScreen();
         };
 
-        /* === 6. 再生画面（インライン＆リアルタイムオーバーレイ） === */
+        /* === 6. 再生画面 === */
         let playlistUrls = [];
         let currentPlayIndex = 0;
 
@@ -767,10 +737,7 @@ const isViewable = true;
             playbackView.onended = () => { currentPlayIndex++; playNextInPlaylist(); };
         }
 
-        playbackContainer.onclick = () => { 
-            if (playbackView.paused) playbackView.play(); 
-            else playbackView.pause(); 
-        };
+        playbackContainer.onclick = () => { if (playbackView.paused) playbackView.play(); else playbackView.pause(); };
 
         function closePlaybackScreen() {
             playbackView.pause(); playbackView.onended = null; 
@@ -796,29 +763,22 @@ const isViewable = true;
             exportTitle.textContent = "EXPORTING..."; exportDesc.innerHTML = "1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください";
             exportProgressBar.style.width = "0%"; exportProgressContainer.style.display = "block";
             exportDownloadLink.style.display = "none"; exportReturnBtn.style.display = "none";
+            exportCanvas.style.display = "block"; // モニターCanvasを表示
 
             const exportVideo = document.createElement('video');
-            exportVideo.playsInline = true; 
-            exportVideo.muted = false; // ★実際の環境音を抽出するためミュート解除
+            exportVideo.playsInline = true; exportVideo.muted = false; 
 
-            // 音声抽出とフリーズ防止の無音パルス
-            let audioCtx = null;
-            let dest = null;
-            let dummyOsc = null;
+            let audioCtx = null; let dest = null; let dummyOsc = null;
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 dest = audioCtx.createMediaStreamDestination();
-
                 dummyOsc = audioCtx.createOscillator();
                 const dummyGain = audioCtx.createGain();
                 dummyGain.gain.value = 0.0001; 
-                dummyOsc.connect(dummyGain);
-                dummyGain.connect(dest);
-                dummyOsc.start();
-
+                dummyOsc.connect(dummyGain); dummyGain.connect(dest); dummyOsc.start();
                 const source = audioCtx.createMediaElementSource(exportVideo);
                 source.connect(dest);
-            } catch(e) { console.log("AudioContext Error:", e); }
+            } catch(e) { console.log("AudioContext Error"); }
 
             const exportStream = exportCanvas.captureStream(30);
             if (dest) dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
@@ -831,7 +791,6 @@ const isViewable = true;
 
             let currentIndex = 0; let isExporting = true; let exportDateStr = "";
 
-            // 現像キャンバスへの描画（16:9切り抜きと控えめな日付焼き付け）
             function exportDrawLoop() {
                 if (!isExporting) return;
                 exportCanvasCtx.fillStyle = '#000'; exportCanvasCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
@@ -843,16 +802,17 @@ const isViewable = true;
                         if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                         exportCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, exportCanvas.width, exportCanvas.height);
                         
-                        // ★日付をアプリ画面（CSS）の見た目と完全に一致させる計算
+                        // ★修正：書き出し動画（Canvas）の日付の位置とサイズをアプリ表示と完璧に同期（右下スレスレ）
                         if (showWatermark && exportDateStr) {
                             exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.6)";
-                            exportCanvasCtx.font = `normal 46px ${appFont}`;
+                            exportCanvasCtx.font = `normal 44px ${appFont}`; /* 比率を合わせたサイズに固定 */
                             exportCanvasCtx.textAlign = "right";
                             exportCanvasCtx.textBaseline = "bottom"; 
                             exportCanvasCtx.shadowColor = "rgba(0,0,0,0.6)";
                             exportCanvasCtx.shadowBlur = 6;
                             
-                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 50, exportCanvas.height - 40);
+                            // 右下から適切なマージン（右に40px、下に24px）を引いた位置に焼き付け
+                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 40, exportCanvas.height - 24);
                             exportCanvasCtx.shadowBlur = 0;
                         }
                     }
@@ -892,6 +852,9 @@ const isViewable = true;
                     const mergedBlob = new Blob(exportChunks, { type: mime });
                     const safeDateLabel = dateLabel.replace(/\s+/g, '_').replace(/\//g, '-');
                     
+                    // ★修正：完了画面に移行した際、用を終えた四角い動画モニター（Canvas）を非表示にする
+                    exportCanvas.style.display = "none";
+
                     exportTitle.textContent = "COMPLETE.";
                     exportDesc.innerHTML = "フィルムの現像が完了しました<br>端末に保存してください";
                     exportProgressContainer.style.display = "none";
