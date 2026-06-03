@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>1 Year in 2 Hours</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="1Year2Hours">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' fill='%23111'/><circle cx='128' cy='128' r='90' fill='none' stroke='%23b22222' stroke-width='12'/><rect x='100' y='90' width='60' height='80' fill='%23f4ebd0'/></svg>">
+
     <style>
         /* 全体のテーマ：昔の映画館 */
         body {
@@ -15,6 +21,9 @@
             display: flex;
             justify-content: center;
             overscroll-behavior-y: none;
+            /* テキストの意図しない選択を防ぐ */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         #app {
@@ -30,75 +39,24 @@
         }
 
         .back-btn {
-            background: none;
-            border: none;
-            color: #f4ebd0;
-            font-family: inherit;
-            font-size: 14px;
-            cursor: pointer;
-            padding: 0;
-            letter-spacing: 1px;
-            width: 60px;
-            text-align: left;
+            background: none; border: none; color: #f4ebd0; font-family: inherit; font-size: 14px;
+            cursor: pointer; padding: 0; letter-spacing: 1px; width: 60px; text-align: left;
         }
         .header-spacer { width: 60px; }
 
         /* --- 1. 月選択画面 --- */
-        #month-screen {
-            display: flex;
-            flex-direction: column;
-            height: 100dvh;
-            position: relative;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* ★変更：文字を浮かせて、スワイプ操作の邪魔にならないようにする */
+        #month-screen { display: flex; flex-direction: column; height: 100dvh; position: relative; -webkit-tap-highlight-color: transparent; }
         .month-screen-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            padding: 30px 0 20px 0;
-            font-size: 18px;
-            letter-spacing: 4px;
-            z-index: 20;
-            background: linear-gradient(to bottom, rgba(26,26,26,0.9) 20%, transparent);
-            pointer-events: none; /* 下にあるカードをスワイプできるようにする */
+            position: absolute; top: 0; left: 0; width: 100%; text-align: center; padding: 40px 0 20px 0;
+            font-size: 18px; letter-spacing: 4px; z-index: 20; background: linear-gradient(to bottom, rgba(26,26,26,0.9) 20%, transparent); pointer-events: none;
         }
-
-        /* ★変更：リスト全体を画面いっぱいに広げて、完全な中央配置を実現する */
-        #month-list {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
+        #month-list { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 
         .month-card {
-            position: absolute;
-            left: 0; right: 0; top: 0; bottom: 0;
-            margin: auto;
-            width: 85%;
-            height: auto;
-            aspect-ratio: 16 / 9;
-            background-color: #222;
-            border: 2px solid #444;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
-            cursor: pointer;
-            opacity: 0;
-            transform: translateY(0);
-            pointer-events: none;
-            z-index: 0;
+            position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: auto; width: 85%; height: auto; aspect-ratio: 16 / 9;
+            background-color: #222; border: 2px solid #444; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 15px 35px rgba(0,0,0,0.8); cursor: pointer; opacity: 0; transform: translateY(0); pointer-events: none; z-index: 0;
         }
-
         .month-card.active { transform: translateY(0); opacity: 1; z-index: 10; border-color: #f4ebd0; pointer-events: auto; filter: blur(0px) brightness(1); }
         .month-card.prev { transform: translateY(-60%); opacity: 0.85; z-index: 5; pointer-events: auto; filter: blur(1px) brightness(0.75); }
         .month-card.next { transform: translateY(60%); opacity: 0.85; z-index: 5; pointer-events: auto; filter: blur(1px) brightness(0.75); }
@@ -106,36 +64,22 @@
         .month-card.hidden-next { transform: translateY(120%); opacity: 0; }
 
         .month-name { font-size: 32px; letter-spacing: 3px; z-index: 2; text-shadow: 2px 2px 5px rgba(0,0,0,0.9); }
-        .month-card.has-data::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(45deg, #4a3f35, #2a221d); opacity: 0.7; z-index: 1;
-        }
+        .month-card.has-data::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, #4a3f35, #2a221d); opacity: 0.7; z-index: 1; }
 
-        #reset-db-btn {
-            position: absolute;
-            bottom: 20px;
-            left: 0; right: 0;
-            margin: auto;
-            width: 140px;
-            background: none;
-            border: 1px solid #444;
-            color: #888;
-            padding: 8px;
-            font-family: inherit;
-            font-size: 10px;
-            letter-spacing: 2px;
-            cursor: pointer;
-            z-index: 30;
-            border-radius: 20px;
-            transition: 0.3s;
+        /* 月画面の下部メニュー群 */
+        .bottom-menu {
+            position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 20px; z-index: 30; pointer-events: auto;
         }
-        #reset-db-btn:hover { background-color: #b22222; color: #fff; border-color: #b22222; }
+        .text-btn {
+            background: none; border: 1px solid #444; color: #888; padding: 8px 15px;
+            font-family: inherit; font-size: 10px; letter-spacing: 2px; cursor: pointer; border-radius: 20px; transition: 0.3s; -webkit-tap-highlight-color: transparent;
+        }
+        .text-btn:hover { background-color: #333; color: #f4ebd0; border-color: #666; }
 
         /* --- 2. ホーム画面 --- */
         #home-screen { display: none; flex-direction: column; height: 100dvh; }
-        .home-header { display: flex; align-items: center; padding: 20px; border-bottom: 1px solid #333; }
+        .home-header { display: flex; align-items: center; padding: 20px; border-bottom: 1px solid #333; margin-top: 10px; }
         h2.screen-title { margin: 0; flex-grow: 1; text-align: center; font-size: 20px; letter-spacing: 2px; font-weight: normal; }
-
         #calendar-container { padding: 20px; overflow-y: auto; flex-grow: 1; overscroll-behavior-y: auto; }
         .weekday-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 10px; text-align: center; font-size: 12px; color: #666; }
         #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 30px; }
@@ -151,7 +95,6 @@
         .day-box span { position: relative; z-index: 1; }
 
         #tickets-area { display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px; }
-        
         .ticket {
             background-color: #f4ebd0; color: #111; border: 2px dashed #111; border-radius: 8px; padding: 15px 20px;
             display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: transform 0.2s, background-color 0.2s; position: relative; -webkit-tap-highlight-color: transparent;
@@ -159,22 +102,19 @@
         .ticket::before, .ticket::after { content: ''; position: absolute; top: 50%; width: 16px; height: 16px; background-color: #1a1a1a; border-radius: 50%; transform: translateY(-50%); }
         .ticket::before { left: -8px; } .ticket::after { right: -8px; }
         .ticket:hover { transform: translateY(-2px); background-color: #e8debf; }
-        
         .ticket.locked { background-color: #2a2a2a; color: #666; border-color: #444; cursor: not-allowed; }
         .ticket.locked:hover { transform: none; background-color: #2a2a2a; }
         .ticket.locked .ticket-dates { color: #555; }
-
         .ticket-info { display: flex; flex-direction: column; }
         .ticket-week { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
         .ticket-dates { font-size: 11px; color: #444; margin-top: 4px; }
         .ticket-play { font-size: 18px; display: flex; align-items: center; gap: 8px; }
         .ticket.locked .ticket-play { font-size: 14px; }
-
         .record-badge { font-size: 10px; background: #b22222; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
 
         /* --- 3. 撮影画面 --- */
         #camera-screen { display: none; flex-direction: column; height: 100dvh; background-color: #000; }
-        .camera-header { padding: 20px; display: flex; align-items: center; border-bottom: 1px solid #222; }
+        .camera-header { padding: 20px; display: flex; align-items: center; border-bottom: 1px solid #222; margin-top: 10px; }
         #camera-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
@@ -197,32 +137,27 @@
         .finish-btn:hover { background-color: #b22222; color: #111; }
 
         /* --- 5. 再生画面 --- */
-        #playback-screen { 
-            display: none; 
-            flex-direction: column; 
-            justify-content: center; 
-            height: 100dvh; 
-            background-color: #000; 
-            position: relative; 
-        }
-        
-        #playback-screen .camera-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            box-sizing: border-box;
-            z-index: 20;
-            border-bottom: none; 
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); 
-        }
-
+        #playback-screen { display: none; flex-direction: column; justify-content: center; height: 100dvh; background-color: #000; position: relative; }
+        #playback-screen .camera-header { position: absolute; top: 10px; left: 0; width: 100%; box-sizing: border-box; z-index: 20; border-bottom: none; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding-top: 30px; }
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
-        
         #playback-screen .video-container { margin: 0; }
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
 
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
+
+        /* --- 6. 設定画面（始まりの月を選択） --- */
+        #settings-screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            height: 100dvh; background-color: rgba(10,10,10,0.95); position: absolute; top: 0; left: 0; width: 100%; z-index: 100;
+        }
+        .settings-title { font-size: 20px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 30px; }
+        .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 40px; }
+        .month-opt-btn {
+            background-color: #222; border: 1px solid #444; color: #888; padding: 10px 15px;
+            font-family: inherit; font-size: 14px; border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
+        .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; font-family: inherit; cursor: pointer; border-radius: 20px; }
 
     </style>
 </head>
@@ -232,7 +167,11 @@
         <div id="month-screen">
             <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
             <div id="month-list"></div>
-            <button id="reset-db-btn">RESET ALL DATA</button>
+            
+            <div class="bottom-menu">
+                <button class="text-btn" id="open-settings-btn">⚙️ START MONTH</button>
+                <button class="text-btn" id="reset-db-btn">RESET ALL DATA</button>
+            </div>
         </div>
 
         <div id="home-screen">
@@ -282,12 +221,19 @@
             </div>
         </div>
 
+        <div id="settings-screen">
+            <div class="settings-title">1年の始まりの月</div>
+            <div class="month-select-container" id="month-select-container">
+                </div>
+            <button class="close-settings-btn" id="close-settings-btn">CLOSE</button>
+        </div>
+
         <canvas id="record-canvas"></canvas>
     </div>
 
     <script>
         /* =========================================
-           1. データベース（IndexedDB）の構築と操作
+           1. データベース（IndexedDB）操作
         ========================================= */
         const dbName = 'OneYearInTwoHoursDB_v3';
         const storeName = 'videos';
@@ -296,19 +242,11 @@
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(dbName, 1);
-                
                 request.onupgradeneeded = (e) => {
                     db = e.target.result;
-                    if (!db.objectStoreNames.contains(storeName)) {
-                        db.createObjectStore(storeName); 
-                    }
+                    if (!db.objectStoreNames.contains(storeName)) db.createObjectStore(storeName); 
                 };
-                
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    resolve();
-                };
-                
+                request.onsuccess = (e) => { db = e.target.result; resolve(); };
                 request.onerror = (e) => reject(request.error);
             });
         }
@@ -344,13 +282,9 @@
         }
 
         document.getElementById('reset-db-btn').onclick = () => {
-            if(confirm("すべての録画データを消去してリセットしますか？\n（テスト中にやり直したい場合に使用します）")) {
+            if(confirm("※注意※\nすべての録画データを消去してリセットしますか？")) {
                 const req = indexedDB.deleteDatabase(dbName);
-                req.onsuccess = () => {
-                    alert("データをリセットしました。アプリを再読み込みします。");
-                    location.reload();
-                };
-                req.onerror = () => alert("リセットに失敗しました。");
+                req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); };
             }
         };
 
@@ -363,6 +297,7 @@
         const cameraScreen = document.getElementById('camera-screen');
         const finishScreen = document.getElementById('finish-screen');
         const playbackScreen = document.getElementById('playback-screen');
+        const settingsScreen = document.getElementById('settings-screen');
         
         const calendarElement = document.getElementById('calendar');
         const ticketsArea = document.getElementById('tickets-area');
@@ -381,20 +316,24 @@
         const currentYearReal = todayDateObj.getFullYear();
         const currentMonthNumReal = todayDateObj.getMonth() + 1;
         const currentDateReal = todayDateObj.getDate();
-        
         const todayResetObj = new Date(currentYearReal, currentMonthNumReal - 1, currentDateReal);
 
         const viewYear = currentYearReal;
         document.getElementById('current-year-display').textContent = viewYear;
         
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        let activeMonthIndex = currentMonthNumReal - 1; 
+        
+        // ★追加：始まりの月をlocalStorageから取得（初期値は1月）
+        let appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
+        
+        let activeMonthIndex = 0; // 現在フォーカスされているカードのインデックス
         let cards = [];
+        let monthSequence = []; // 並び替えた月の配列
         
         let recordTargetYear = null;
         let recordTargetMonth = null;
         let recordTargetDay = null;
-        let selectedMonth = currentMonthNumReal;
+        let selectedMonth = null;
         
         let recordedData = {};
 
@@ -404,6 +343,7 @@
                 const keys = await getAllRecordedKeys();
                 keys.forEach(key => { recordedData[key] = true; });
                 initMonthScreen();
+                buildSettingsUI();
             } catch (err) {
                 console.error("DB初期化エラー", err);
                 alert("データの読み込みに失敗しました。");
@@ -414,18 +354,39 @@
         function initMonthScreen() {
             monthList.innerHTML = '';
             cards = [];
+            monthSequence = [];
+
+            // ★始まりの月に合わせて12ヶ月を並び替える
             for (let i = 0; i < 12; i++) {
+                let m = ((appStartMonth - 1 + i) % 12) + 1;
+                monthSequence.push(m);
+            }
+
+            // 現在の月にフォーカスを当てるためのインデックス探し
+            activeMonthIndex = monthSequence.indexOf(currentMonthNumReal);
+            if (activeMonthIndex === -1) activeMonthIndex = 0;
+
+            for (let i = 0; i < 12; i++) {
+                let targetMonthNum = monthSequence[i];
                 const card = document.createElement('div');
                 card.className = 'month-card';
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${viewYear}-${i + 1}-`));
+                
+                // データがあるかのチェック（年またぎを考慮）
+                let targetYearForCard = viewYear;
+                if (targetMonthNum < appStartMonth) {
+                    targetYearForCard = viewYear + 1; // 始まりの月より前（例：4月始まりの1月）は来年扱い
+                }
+                
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
                 if (hasDataInMonth) card.classList.add('has-data');
+                
                 const nameSpan = document.createElement('div');
                 nameSpan.className = 'month-name';
-                nameSpan.textContent = monthNames[i];
+                nameSpan.textContent = monthNames[targetMonthNum - 1];
                 card.appendChild(nameSpan);
 
                 card.onclick = () => {
-                    if (i === activeMonthIndex) { openMonth(i + 1); } 
+                    if (i === activeMonthIndex) { openMonth(targetMonthNum, targetYearForCard); } 
                     else if (i === activeMonthIndex - 1 || i === activeMonthIndex + 1) {
                         activeMonthIndex = i; updateMonthCards();
                     }
@@ -439,7 +400,11 @@
         function updateMonthCards() {
             cards.forEach((card, index) => {
                 card.className = 'month-card'; 
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${viewYear}-${index + 1}-`));
+                let targetMonthNum = monthSequence[index];
+                let targetYearForCard = viewYear;
+                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1;
+
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
                 if (hasDataInMonth) card.classList.add('has-data');
 
                 if (index === activeMonthIndex) card.classList.add('active');
@@ -468,9 +433,36 @@
 
         function lockScroll() { isScrolling = true; setTimeout(() => { isScrolling = false; }, 400); }
 
-        function openMonth(month) {
+        /* === 設定画面処理 === */
+        document.getElementById('open-settings-btn').onclick = () => { settingsScreen.style.display = 'flex'; };
+        document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
+
+        function buildSettingsUI() {
+            const container = document.getElementById('month-select-container');
+            container.innerHTML = '';
+            for(let i=1; i<=12; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'month-opt-btn';
+                if(i === appStartMonth) btn.classList.add('selected');
+                btn.textContent = `${i}月始まり`;
+                btn.onclick = () => {
+                    localStorage.setItem('appStartMonth', i);
+                    appStartMonth = i;
+                    document.querySelectorAll('.month-opt-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    initMonthScreen(); // 月カードを再構築
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        /* === ホーム（カレンダー）画面処理 === */
+        let currentRenderYear = viewYear;
+
+        function openMonth(month, year) {
             selectedMonth = month;
-            monthTitle.textContent = monthNames[month - 1];
+            currentRenderYear = year;
+            monthTitle.textContent = `${monthNames[month - 1]} ${year}`;
             monthScreen.style.display = 'none';
             homeScreen.style.display = 'flex';
             renderCalendarAndTickets();
@@ -480,8 +472,8 @@
             calendarElement.innerHTML = '';
             ticketsArea.innerHTML = '';
 
-            const firstDayOfMonth = new Date(viewYear, selectedMonth - 1, 1);
-            const lastDayOfMonth = new Date(viewYear, selectedMonth, 0);
+            const firstDayOfMonth = new Date(currentRenderYear, selectedMonth - 1, 1);
+            const lastDayOfMonth = new Date(currentRenderYear, selectedMonth, 0);
             const startDate = new Date(firstDayOfMonth);
             startDate.setDate(startDate.getDate() - startDate.getDay());
             const endDate = new Date(lastDayOfMonth);
@@ -537,7 +529,7 @@
 
         function createTicket(weekNum, datesInWeek) {
             const startDay = datesInWeek[0];
-            const endDay = datesInWeek[6]; // この週の土曜日
+            const endDay = datesInWeek[6];
             const startM = monthNames[startDay.getMonth()].substring(0, 3);
             const endM = monthNames[endDay.getMonth()].substring(0, 3);
             
@@ -555,15 +547,11 @@
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
             const isLastDayRecorded = !!recordedData[lastDateKey]; 
             const isWeekOver = todayResetObj > endDay; 
-
             const isViewable = isLastDayRecorded || isWeekOver;
 
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
-            
-            if (!isViewable) {
-                ticket.classList.add('locked');
-            }
+            if (!isViewable) ticket.classList.add('locked');
 
             ticket.innerHTML = `
                 <div class="ticket-info">
@@ -581,7 +569,6 @@
                     alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
                     return;
                 }
-
                 if (recordedCount === 0) {
                     alert('この週には記録がありません。');
                 } else {
@@ -600,16 +587,14 @@
         const MAX_RECORD_TIME = 20000;
         
         const recordCanvas = document.getElementById('record-canvas');
-        recordCanvas.width = 1280;
-        recordCanvas.height = 720;
+        recordCanvas.width = 1280; recordCanvas.height = 720;
         const recordCanvasCtx = recordCanvas.getContext('2d');
         let drawFrameId;
 
         function openCameraScreen(y, m, d) {
             recordTargetYear = y; recordTargetMonth = m; recordTargetDay = d;
             cameraDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - REC`;
-            homeScreen.style.display = 'none';
-            cameraScreen.style.display = 'flex';
+            homeScreen.style.display = 'none'; cameraScreen.style.display = 'flex';
             totalRecordTime = 0; recordedChunks = []; progressBar.style.width = '0%';
             recordTimer.textContent = '00:00 / 00:20';
             recordBtn.disabled = false; recordBtn.classList.remove('recording');
@@ -618,71 +603,35 @@
 
         async function startCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" }, 
-                    audio: true 
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
                 cameraView.srcObject = stream;
-
-                cameraView.onplaying = () => {
-                    if(drawFrameId) cancelAnimationFrame(drawFrameId);
-                    drawToCanvas();
-                };
+                cameraView.onplaying = () => { if(drawFrameId) cancelAnimationFrame(drawFrameId); drawToCanvas(); };
 
                 const canvasStream = recordCanvas.captureStream(30);
                 const audioTracks = stream.getAudioTracks();
-                if (audioTracks.length > 0) {
-                    canvasStream.addTrack(audioTracks[0]);
-                }
+                if (audioTracks.length > 0) canvasStream.addTrack(audioTracks[0]);
 
                 mediaRecorder = new MediaRecorder(canvasStream);
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) recordedChunks.push(event.data);
-                };
-
+                mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) recordedChunks.push(event.data); };
                 mediaRecorder.onstop = async () => {
                     const mimeType = mediaRecorder.mimeType || (recordedChunks[0] && recordedChunks[0].type) || '';
                     const blob = new Blob(recordedChunks, { type: mimeType }); 
-                    
                     const dataKey = `${recordTargetYear}-${recordTargetMonth}-${recordTargetDay}`;
-                    
-                    try {
-                        await saveVideoToDB(dataKey, blob);
-                        recordedData[dataKey] = true; 
-                    } catch(e) {
-                        console.error("保存失敗", e);
-                        alert("動画の保存に失敗しました。");
-                    }
-                    
-                    stopCamera();
-                    cameraScreen.style.display = 'none';
-                    finishScreen.style.display = 'flex';
+                    try { await saveVideoToDB(dataKey, blob); recordedData[dataKey] = true; } 
+                    catch(e) { console.error("保存失敗", e); alert("動画の保存に失敗しました。"); }
+                    stopCamera(); cameraScreen.style.display = 'none'; finishScreen.style.display = 'flex';
                 };
             } catch (err) {
-                console.log("カメラ起動エラー:", err);
-                alert("カメラまたはマイクの起動に失敗しました。\nブラウザのアクセス許可をご確認ください。");
+                console.log("カメラ起動エラー:", err); alert("カメラまたはマイクの起動に失敗しました。");
             }
         }
 
         function drawToCanvas() {
             if (!cameraView.srcObject) return;
-            const vw = cameraView.videoWidth;
-            const vh = cameraView.videoHeight;
-            
+            const vw = cameraView.videoWidth; const vh = cameraView.videoHeight;
             if (vw > 0 && vh > 0) {
-                let sWidth = vw;
-                let sHeight = vw * (9 / 16);
-                let sx = 0;
-                let sy = (vh - sHeight) / 2;
-
-                if (vw / vh > 16 / 9) {
-                    sHeight = vh;
-                    sWidth = vh * (16 / 9);
-                    sx = (vw - sWidth) / 2;
-                    sy = 0;
-                }
-                
+                let sWidth = vw, sHeight = vw * (9 / 16), sx = 0, sy = (vh - sHeight) / 2;
+                if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                 recordCanvasCtx.drawImage(cameraView, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
             }
             drawFrameId = requestAnimationFrame(drawToCanvas);
@@ -704,10 +653,8 @@
                 else if (mediaRecorder.state === 'paused') mediaRecorder.resume(); 
 
                 timerInterval = setInterval(() => {
-                    totalRecordTime += 100;
-                    progressBar.style.width = (totalRecordTime / MAX_RECORD_TIME) * 100 + '%';
-                    const currentSec = Math.floor(totalRecordTime / 1000);
-                    recordTimer.textContent = `00:${currentSec.toString().padStart(2, '0')} / 00:20`;
+                    totalRecordTime += 100; progressBar.style.width = (totalRecordTime / MAX_RECORD_TIME) * 100 + '%';
+                    recordTimer.textContent = `00:${Math.floor(totalRecordTime / 1000).toString().padStart(2, '0')} / 00:20`;
                     if (totalRecordTime >= MAX_RECORD_TIME) finishRecording();
                 }, 100);
             }
@@ -723,7 +670,7 @@
             renderCalendarAndTickets(); initMonthScreen();
         };
 
-        /* === 再生画面（プレイリスト連続再生機能） === */
+        /* === 再生画面 === */
         let playlistUrls = [];
         let currentPlayIndex = 0;
 
@@ -732,31 +679,16 @@
             for (let key of keys) {
                 try {
                     const blob = await getVideoFromDB(key);
-                    if (blob) {
-                        playlistUrls.push({ key: key, url: URL.createObjectURL(blob) });
-                    }
-                } catch(e) {
-                    console.error("読み込みエラー", e);
-                }
+                    if (blob) playlistUrls.push({ key: key, url: URL.createObjectURL(blob) });
+                } catch(e) { console.error("読み込みエラー", e); }
             }
-
-            if (playlistUrls.length === 0) {
-                alert("再生できる動画が見つかりませんでした。");
-                return;
-            }
-
-            homeScreen.style.display = 'none';
-            playbackScreen.style.display = 'flex';
-            currentPlayIndex = 0;
-            playNextInPlaylist();
+            if (playlistUrls.length === 0) { alert("再生できる動画が見つかりませんでした。"); return; }
+            homeScreen.style.display = 'none'; playbackScreen.style.display = 'flex';
+            currentPlayIndex = 0; playNextInPlaylist();
         }
 
         function playNextInPlaylist() {
-            if (currentPlayIndex >= playlistUrls.length) {
-                closePlaybackScreen();
-                return;
-            }
-
+            if (currentPlayIndex >= playlistUrls.length) { closePlaybackScreen(); return; }
             const currentItem = playlistUrls[currentPlayIndex];
             
             if (playlistUrls.length > 1) {
@@ -768,21 +700,13 @@
 
             playbackView.src = currentItem.url;
             playbackView.play().catch(e => console.log("自動再生ブロック:", e));
-
-            playbackView.onended = () => {
-                currentPlayIndex++;
-                playNextInPlaylist();
-            };
+            playbackView.onended = () => { currentPlayIndex++; playNextInPlaylist(); };
         }
 
         function closePlaybackScreen() {
-            playbackView.pause();
-            playbackView.onended = null; 
-            playlistUrls.forEach(item => URL.revokeObjectURL(item.url));
-            playlistUrls = [];
-            playbackView.src = ""; 
-            playbackScreen.style.display = 'none';
-            homeScreen.style.display = 'flex';
+            playbackView.pause(); playbackView.onended = null; 
+            playlistUrls.forEach(item => URL.revokeObjectURL(item.url)); playlistUrls = [];
+            playbackView.src = ""; playbackScreen.style.display = 'none'; homeScreen.style.display = 'flex';
         }
 
         document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
@@ -796,7 +720,9 @@
 
         document.getElementById('month-back-btn').onclick = () => {
             homeScreen.style.display = 'none'; monthScreen.style.display = 'flex';
-            activeMonthIndex = selectedMonth - 1; updateMonthCards();
+            activeMonthIndex = monthSequence.indexOf(selectedMonth);
+            if (activeMonthIndex === -1) activeMonthIndex = 0;
+            updateMonthCards();
         };
 
         startApp();
