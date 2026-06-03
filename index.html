@@ -11,12 +11,10 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' fill='%23111'/><circle cx='128' cy='128' r='90' fill='none' stroke='%23b22222' stroke-width='12'/><rect x='100' y='90' width='60' height='80' fill='%23f4ebd0'/></svg>">
 
     <style>
-        /* ★アプリ全体のフォントを一括管理する変数 */
         :root {
             --app-font: 'Times New Roman', 'Noto Serif JP', serif;
         }
 
-        /* 全体のテーマ：昔の映画館 */
         body {
             font-family: var(--app-font);
             background-color: #111;
@@ -42,7 +40,6 @@
             overflow: hidden;
         }
 
-        /* ボタンなども全て統一フォントを継承させる */
         button, input, select, textarea {
             font-family: inherit;
         }
@@ -125,10 +122,16 @@
         /* --- 共通：動画コンテナとウォーターマーク --- */
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
         .video-element { width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
+        
+        /* ★修正：ウォーターマークの主張を弱める（細く、小さく、右下スレスレ、半透明に） */
         .watermark-overlay {
-            position: absolute; bottom: 12px; right: 15px;
-            color: rgba(244, 235, 208, 0.85); font-size: 14px; font-weight: bold;
-            letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.9); z-index: 30; pointer-events: none; display: none;
+            position: absolute; bottom: 8px; right: 12px;
+            color: rgba(244, 235, 208, 0.5); /* 色を薄く */
+            font-size: 13px; /* 少し小さく */
+            font-weight: normal; /* 細く */
+            letter-spacing: 1px; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* 影も弱く */
+            z-index: 30; pointer-events: none; display: none;
         }
 
         /* --- 3. 撮影画面 --- */
@@ -158,14 +161,7 @@
         #playback-screen .camera-header { position: absolute; top: 10px; left: 0; width: 100%; box-sizing: border-box; z-index: 20; border-bottom: none; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); padding-top: 30px; }
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         #playback-screen .video-container { margin: 0; position: relative; }
-        
         #playback-view { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-        
-        #playback-date-overlay {
-            position: absolute; bottom: 20px; right: 25px;
-            color: rgba(244, 235, 208, 0.85); font-size: 18px; font-weight: bold;
-            letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.9); z-index: 30; pointer-events: none; display: none;
-        }
 
         /* --- 6. 設定画面 --- */
         #settings-screen {
@@ -258,8 +254,7 @@
 
         <div id="settings-screen">
             <div class="settings-title">APP FONT</div>
-            <div class="month-select-container" id="font-select-container">
-                </div>
+            <div class="month-select-container" id="font-select-container"></div>
 
             <div class="settings-title">START MONTH</div>
             <div class="month-select-container" id="month-select-container"></div>
@@ -292,10 +287,10 @@
         /* =========================================
            1. 設定データの読み込みと初期化（フォント対応）
         ========================================= */
+        // ★修正：Monospaceを削除し、SerifとSans-Serifの2択に
         const fontOptions = [
             { label: 'Serif', value: "'Times New Roman', 'Noto Serif JP', serif" },
-            { label: 'Sans-Serif', value: "'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif" },
-            { label: 'Monospace', value: "'Courier New', Courier, monospace" }
+            { label: 'Sans-Serif', value: "'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif" }
         ];
 
         let appStartMonth = 1;
@@ -306,17 +301,18 @@
             appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
             showWatermark = localStorage.getItem('showWatermark') !== 'false';
             appFont = localStorage.getItem('appFont') || fontOptions[0].value;
+            // 以前のMonospace設定が残っていた場合のセーフティ
+            if (appFont.includes('monospace')) appFont = fontOptions[0].value;
         } catch (e) {
-            console.warn("LocalStorageへのアクセスが制限されています。");
+            console.warn("LocalStorage制限");
         }
 
-        // 起動時にCSS変数へフォントを適用
         document.documentElement.style.setProperty('--app-font', appFont);
 
         /* =========================================
            2. データベース（IndexedDB）操作
         ========================================= */
-        const dbName = 'OneYearInTwoHoursDB_v5'; // アーキテクチャ変更のためDBをリセット
+        const dbName = 'OneYearInTwoHoursDB_v6';
         const storeName = 'videos';
         let db = null;
 
@@ -511,7 +507,6 @@
         document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
 
         function buildSettingsUI() {
-            // フォントの選択
             const fontContainer = document.getElementById('font-select-container');
             fontContainer.innerHTML = '';
             fontOptions.forEach(opt => {
@@ -529,7 +524,6 @@
                 fontContainer.appendChild(btn);
             });
 
-            // 始まりの月の選択
             const monthContainer = document.getElementById('month-select-container');
             monthContainer.innerHTML = '';
             for(let i=1; i<=12; i++) {
@@ -547,7 +541,6 @@
                 monthContainer.appendChild(btn);
             }
 
-            // ウォーターマークの選択
             const wOnBtn = document.getElementById('watermark-on-btn');
             const wOffBtn = document.getElementById('watermark-off-btn');
             wOnBtn.classList.remove('selected'); wOffBtn.classList.remove('selected');
@@ -594,19 +587,12 @@
 
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
-                // ▼ 変更前（本来の厳密なルール：今日しか撮影できない）
-
-
-
-// ▼ 変更後（テスト用：空のマスなら、過去でも未来でもいつでも撮影できる！）
-dayBox.onclick = () => {
-    if (recordedData[dataKey]) {
-        startPlayback([dataKey]); 
-        return;
-    }
-    // エラーメッセージを消して、無条件でカメラを開く
-    openCameraScreen(boxYear, boxMonth, boxDate);
-};
+                dayBox.onclick = () => {
+                    if (recordedData[dataKey]) { startPlayback([dataKey]); return; }
+                    
+                    // テスト時はこの条件分岐を消して openCameraScreen を呼ぶ
+                    if (isToday) { openCameraScreen(boxYear, boxMonth, boxDate); } else { if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); }
+                };
                 
                 calendarElement.appendChild(dayBox); weekDatesArray.push(new Date(currentDate));
                 if (currentDate.getDay() === 6) { createTicket(weekNum, weekDatesArray); weekNum++; weekDatesArray = []; }
@@ -631,12 +617,7 @@ dayBox.onclick = () => {
             const isWeekOver = todayResetObj > endDay; 
             
             // テスト時はここを const isViewable = true; にする
-            // ▼ 変更前（本来の厳密なロック機能）
-
-
-
-// ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
-const isViewable = true;
+            const isViewable = isLastDayRecorded || isWeekOver;
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
@@ -662,7 +643,7 @@ const isViewable = true;
             ticketsArea.appendChild(ticket);
         }
 
-        /* === 5. 撮影システム（超安定・音声なし・生データ保存） === */
+        /* === 5. 撮影システム（環境音ON・生データ保存） === */
         let isRecording = false; let totalRecordTime = 0; let timerInterval; let mediaRecorder; let recordedChunks = [];
         const MAX_RECORD_TIME = 20000;
 
@@ -671,7 +652,6 @@ const isViewable = true;
             currentRecordingDateStr = `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
             cameraDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - REC`;
             
-            // HTML上のオーバーレイで日付を表示
             if (showWatermark) { cameraWatermark.textContent = currentRecordingDateStr; cameraWatermark.style.display = 'block'; } 
             else { cameraWatermark.style.display = 'none'; }
 
@@ -683,10 +663,10 @@ const isViewable = true;
 
         async function startCamera() {
             try {
-                // 音声(audio)を完全に除外し、環境カメラ（アウトカメラ）のみに固定
+                // ★マイク音声（audio: true）を復活
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { aspectRatio: 16/9, facingMode: "environment" }, 
-                    audio: false 
+                    audio: true 
                 });
                 cameraView.srcObject = stream;
 
@@ -800,10 +780,31 @@ const isViewable = true;
             exportDownloadLink.style.display = "none"; exportReturnBtn.style.display = "none";
 
             const exportVideo = document.createElement('video');
-            exportVideo.playsInline = true; exportVideo.muted = true; // 音声がないのでミュートでOK
+            exportVideo.playsInline = true; 
+            exportVideo.muted = false; // ★実際の音声を抽出するためミュート解除
 
-            // 音声を含まない純粋な映像ストリームを取得
+            // ★環境音抽出 ＆ フリーズ防止の無音パルス
+            let audioCtx = null;
+            let dest = null;
+            let dummyOsc = null;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                dest = audioCtx.createMediaStreamDestination();
+
+                dummyOsc = audioCtx.createOscillator();
+                const dummyGain = audioCtx.createGain();
+                dummyGain.gain.value = 0.0001; 
+                dummyOsc.connect(dummyGain);
+                dummyGain.connect(dest);
+                dummyOsc.start();
+
+                // 動画自体の音声ノードを接続し、動画の音とダミー音を合体させる
+                const source = audioCtx.createMediaElementSource(exportVideo);
+                source.connect(dest);
+            } catch(e) { console.log("AudioContext Error:", e); }
+
             const exportStream = exportCanvas.captureStream(30);
+            if (dest) dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
 
             let mime = 'video/webm';
             if (MediaRecorder.isTypeSupported('video/mp4')) mime = 'video/mp4';
@@ -813,7 +814,7 @@ const isViewable = true;
 
             let currentIndex = 0; let isExporting = true; let exportDateStr = "";
 
-            // 現像キャンバスへの描画（ここで16:9切り抜きと日付焼き付けを完璧に行う）
+            // 現像キャンバスへの描画（ここで16:9切り抜きと控えめな日付焼き付けを行う）
             function exportDrawLoop() {
                 if (!isExporting) return;
                 exportCanvasCtx.fillStyle = '#000'; exportCanvasCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
@@ -825,14 +826,14 @@ const isViewable = true;
                         if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                         exportCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, exportCanvas.width, exportCanvas.height);
                         
+                        // ★修正：日付のデザインを控えめに（右下スレスレ、細く、少し小さく、半透明に）
                         if (showWatermark && exportDateStr) {
-                            exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.85)";
-                            // ★設定されたフォント（appFont変数）を使って描画する
-                            exportCanvasCtx.font = `bold 36px ${appFont}`;
+                            exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.6)";
+                            exportCanvasCtx.font = `normal 22px ${appFont}`;
                             exportCanvasCtx.textAlign = "right";
-                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.8)";
-                            exportCanvasCtx.shadowBlur = 8;
-                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 40, exportCanvas.height - 40);
+                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.5)";
+                            exportCanvasCtx.shadowBlur = 4;
+                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 20, exportCanvas.height - 15);
                             exportCanvasCtx.shadowBlur = 0;
                         }
                     }
@@ -864,6 +865,8 @@ const isViewable = true;
 
             exportRecorder.onstop = () => {
                 exportProgressBar.style.width = "100%";
+                if(dummyOsc) dummyOsc.stop();
+                if(audioCtx) audioCtx.close();
                 
                 setTimeout(() => {
                     const ext = mime.includes('mp4') ? 'mp4' : 'webm';
