@@ -163,7 +163,7 @@
         /* --- 5. 再生画面 --- */
         #playback-screen { display: none; flex-direction: column; height: 100dvh; background-color: #000; }
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
-        #playback-view { width: 100%; height: 100%; object-fit: cover; }
+        #playback-view { width: 100%; height: 100%; object-fit: contain; }
 
     </style>
 </head>
@@ -231,7 +231,6 @@
         const storeName = 'videos';
         let db;
 
-        // ① データベースを準備する関数
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(dbName, 1);
@@ -239,7 +238,7 @@
                 request.onupgradeneeded = (e) => {
                     db = e.target.result;
                     if (!db.objectStoreNames.contains(storeName)) {
-                        db.createObjectStore(storeName); // '2024-6-1' のような日付をキーにして保存する箱を作る
+                        db.createObjectStore(storeName); 
                     }
                 };
                 
@@ -252,18 +251,16 @@
             });
         }
 
-        // ② 動画データ（Blob）を保存する関数
         function saveVideoToDB(dateKey, blob) {
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(storeName, 'readwrite');
                 const store = tx.objectStore(storeName);
-                store.put(blob, dateKey); // 日付をキーにして保存
+                store.put(blob, dateKey);
                 tx.oncomplete = () => resolve();
                 tx.onerror = () => reject(tx.error);
             });
         }
 
-        // ③ 動画データ（Blob）を読み込む関数
         function getVideoFromDB(dateKey) {
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(storeName, 'readonly');
@@ -274,7 +271,6 @@
             });
         }
 
-        // ④ 録画されている全ての日付キー（例: ['2024-6-1', '2024-6-2']）を取得する関数
         function getAllRecordedKeys() {
             return new Promise((resolve, reject) => {
                 const tx = db.transaction(storeName, 'readonly');
@@ -325,22 +321,18 @@
         let recordTargetDay = null;
         let selectedMonth = currentMonthNumReal;
         
-        // 録画済みの「日付」だけを管理するオブジェクト（中身はtrue/false）
         let recordedData = {};
 
-        // アプリの起動処理（DBを準備してから画面を描画する）
         async function startApp() {
             try {
                 await initDB();
                 const keys = await getAllRecordedKeys();
-                // データベースに保存されている日付のリストを取り出し、recordedDataにセットする
                 keys.forEach(key => {
                     recordedData[key] = true;
                 });
-                // データの準備ができたら画面を描画
                 initMonthScreen();
             } catch (err) {
-                console.error("データベースの初期化に失敗しました", err);
+                console.error("DB初期化エラー", err);
                 alert("データの読み込みに失敗しました。シークレットモード等の場合、保存機能が使えない可能性があります。");
                 initMonthScreen();
             }
@@ -422,10 +414,8 @@
 
             const firstDayOfMonth = new Date(viewYear, selectedMonth - 1, 1);
             const lastDayOfMonth = new Date(viewYear, selectedMonth, 0);
-
             const startDate = new Date(firstDayOfMonth);
             startDate.setDate(startDate.getDate() - startDate.getDay());
-
             const endDate = new Date(lastDayOfMonth);
             endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
 
@@ -454,7 +444,6 @@
                 
                 dayBox.onclick = () => {
                     if (recordedData[dataKey]) {
-                        // 録画済みなら再生画面へ（データキーを渡す）
                         openPlaybackScreen(boxYear, boxMonth, boxDate, dataKey);
                         return;
                     }
@@ -545,13 +534,15 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' }); 
+                    // ★ブラウザが使用したMIMEタイプを自動取得。空の場合は推測する。
+                    const mimeType = mediaRecorder.mimeType || (recordedChunks[0] && recordedChunks[0].type) || '';
+                    const blob = new Blob(recordedChunks, { type: mimeType }); 
+                    
                     const dataKey = `${recordTargetYear}-${recordTargetMonth}-${recordTargetDay}`;
                     
                     try {
-                        // ★ここでデータベースにBlobを保存する
                         await saveVideoToDB(dataKey, blob);
-                        recordedData[dataKey] = true; // アプリのメモリ上にも記録があることをマークする
+                        recordedData[dataKey] = true; 
                     } catch(e) {
                         console.error("保存失敗", e);
                         alert("動画の保存に失敗しました。");
@@ -604,16 +595,18 @@
             playbackDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - PLAY`;
             
             try {
-                // ★データベースからBlobを取り出す
                 const blob = await getVideoFromDB(dataKey);
                 if(blob) {
-                    // 取り出したデータから再生用のURLを作る
                     const videoURL = URL.createObjectURL(blob);
                     playbackView.src = videoURL;
                     
                     homeScreen.style.display = 'none';
                     playbackScreen.style.display = 'flex';
-                    playbackView.play(); 
+                    
+                    // iOS safari等での自動再生エラーを検知
+                    playbackView.play().catch(e => {
+                        console.log("自動再生ブロック:", e);
+                    });
                 } else {
                     alert("動画データが見つかりませんでした。");
                 }
@@ -625,7 +618,6 @@
 
         document.getElementById('playback-back-btn').onclick = () => {
             playbackView.pause();
-            // メモリ解放のために作成したURLを破棄する
             URL.revokeObjectURL(playbackView.src);
             playbackView.src = ""; 
             
@@ -645,7 +637,6 @@
             activeMonthIndex = selectedMonth - 1; updateMonthCards();
         };
 
-        // ★アプリ起動時にデータベースを読み込む関数を呼ぶ
         startApp();
 
     </script>
