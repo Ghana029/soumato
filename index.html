@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>1 Year in 2 Hours</title>
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="1Year2Hours">
@@ -21,7 +20,6 @@
             display: flex;
             justify-content: center;
             overscroll-behavior-y: none;
-            /* テキストの意図しない選択を防ぐ */
             user-select: none;
             -webkit-user-select: none;
         }
@@ -66,14 +64,8 @@
         .month-name { font-size: 32px; letter-spacing: 3px; z-index: 2; text-shadow: 2px 2px 5px rgba(0,0,0,0.9); }
         .month-card.has-data::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(45deg, #4a3f35, #2a221d); opacity: 0.7; z-index: 1; }
 
-        /* 月画面の下部メニュー群 */
-        .bottom-menu {
-            position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 20px; z-index: 30; pointer-events: auto;
-        }
-        .text-btn {
-            background: none; border: 1px solid #444; color: #888; padding: 8px 15px;
-            font-family: inherit; font-size: 10px; letter-spacing: 2px; cursor: pointer; border-radius: 20px; transition: 0.3s; -webkit-tap-highlight-color: transparent;
-        }
+        .bottom-menu { position: absolute; bottom: 30px; left: 0; right: 0; display: flex; justify-content: center; gap: 20px; z-index: 30; pointer-events: auto; }
+        .text-btn { background: none; border: 1px solid #444; color: #888; padding: 8px 15px; font-family: inherit; font-size: 10px; letter-spacing: 2px; cursor: pointer; border-radius: 20px; transition: 0.3s; -webkit-tap-highlight-color: transparent; }
         .text-btn:hover { background-color: #333; color: #f4ebd0; border-color: #666; }
 
         /* --- 2. ホーム画面 --- */
@@ -97,20 +89,28 @@
         #tickets-area { display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px; }
         .ticket {
             background-color: #f4ebd0; color: #111; border: 2px dashed #111; border-radius: 8px; padding: 15px 20px;
-            display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: transform 0.2s, background-color 0.2s; position: relative; -webkit-tap-highlight-color: transparent;
+            display: flex; align-items: center; justify-content: space-between; transition: transform 0.2s, background-color 0.2s; position: relative; -webkit-tap-highlight-color: transparent;
         }
         .ticket::before, .ticket::after { content: ''; position: absolute; top: 50%; width: 16px; height: 16px; background-color: #1a1a1a; border-radius: 50%; transform: translateY(-50%); }
         .ticket::before { left: -8px; } .ticket::after { right: -8px; }
-        .ticket:hover { transform: translateY(-2px); background-color: #e8debf; }
-        .ticket.locked { background-color: #2a2a2a; color: #666; border-color: #444; cursor: not-allowed; }
-        .ticket.locked:hover { transform: none; background-color: #2a2a2a; }
+        .ticket.locked { background-color: #2a2a2a; color: #666; border-color: #444; }
         .ticket.locked .ticket-dates { color: #555; }
-        .ticket-info { display: flex; flex-direction: column; }
+        .ticket-info { display: flex; flex-direction: column; cursor: default; }
         .ticket-week { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
         .ticket-dates { font-size: 11px; color: #444; margin-top: 4px; }
+        
         .ticket-play { font-size: 18px; display: flex; align-items: center; gap: 8px; }
         .ticket.locked .ticket-play { font-size: 14px; }
         .record-badge { font-size: 10px; background: #b22222; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+
+        /* ★追加：チケット内のアクションボタン */
+        .action-btns { display: flex; gap: 10px; }
+        .ticket-action-btn { 
+            background: none; border: 1px solid #111; color: #111; font-size: 14px; 
+            cursor: pointer; border-radius: 4px; padding: 6px 12px; font-family: inherit; transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ticket-action-btn:hover { background-color: #111; color: #f4ebd0; }
 
         /* --- 3. 撮影画面 --- */
         #camera-screen { display: none; flex-direction: column; height: 100dvh; background-color: #000; }
@@ -143,21 +143,24 @@
         #playback-screen .video-container { margin: 0; }
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
 
-        #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
-
-        /* --- 6. 設定画面（始まりの月を選択） --- */
+        /* --- 6. 設定画面 --- */
         #settings-screen {
             display: none; flex-direction: column; align-items: center; justify-content: center;
             height: 100dvh; background-color: rgba(10,10,10,0.95); position: absolute; top: 0; left: 0; width: 100%; z-index: 100;
         }
         .settings-title { font-size: 20px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 30px; }
         .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 40px; }
-        .month-opt-btn {
-            background-color: #222; border: 1px solid #444; color: #888; padding: 10px 15px;
-            font-family: inherit; font-size: 14px; border-radius: 4px; cursor: pointer; transition: 0.2s;
-        }
+        .month-opt-btn { background-color: #222; border: 1px solid #444; color: #888; padding: 10px 15px; font-family: inherit; font-size: 14px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
         .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; font-family: inherit; cursor: pointer; border-radius: 20px; }
+
+        /* --- ★追加：書き出し（エクスポート）画面 --- */
+        #export-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; background-color: #0a0a0a; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; }
+        #export-progress-container { width: 60%; height: 4px; background-color: #333; margin-bottom: 40px; border-radius: 2px; overflow: hidden; }
+        #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
+        #export-download-link { text-decoration: none; margin-bottom: 20px; }
+
+        #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
 
     </style>
 </head>
@@ -167,7 +170,6 @@
         <div id="month-screen">
             <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
             <div id="month-list"></div>
-            
             <div class="bottom-menu">
                 <button class="text-btn" id="open-settings-btn">⚙️ START MONTH</button>
                 <button class="text-btn" id="reset-db-btn">RESET ALL DATA</button>
@@ -223,9 +225,22 @@
 
         <div id="settings-screen">
             <div class="settings-title">1年の始まりの月</div>
-            <div class="month-select-container" id="month-select-container">
-                </div>
+            <div class="month-select-container" id="month-select-container"></div>
             <button class="close-settings-btn" id="close-settings-btn">CLOSE</button>
+        </div>
+
+        <div id="export-screen">
+            <div class="finish-title" id="export-title">EXPORTING...</div>
+            <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>このままお待ちください</div>
+            
+            <div id="export-progress-container">
+                <div id="export-progress-bar"></div>
+            </div>
+
+            <a id="export-download-link" style="display: none;">
+                <button class="finish-btn">SAVE TO DEVICE</button>
+            </a>
+            <button class="finish-btn" id="export-return-btn" style="display: none;">RETURN</button>
         </div>
 
         <canvas id="record-canvas"></canvas>
@@ -298,6 +313,7 @@
         const finishScreen = document.getElementById('finish-screen');
         const playbackScreen = document.getElementById('playback-screen');
         const settingsScreen = document.getElementById('settings-screen');
+        const exportScreen = document.getElementById('export-screen');
         
         const calendarElement = document.getElementById('calendar');
         const ticketsArea = document.getElementById('tickets-area');
@@ -323,17 +339,17 @@
         
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         
-        // ★追加：始まりの月をlocalStorageから取得（初期値は1月）
         let appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
         
-        let activeMonthIndex = 0; // 現在フォーカスされているカードのインデックス
+        let activeMonthIndex = 0; 
         let cards = [];
-        let monthSequence = []; // 並び替えた月の配列
+        let monthSequence = []; 
         
         let recordTargetYear = null;
         let recordTargetMonth = null;
         let recordTargetDay = null;
         let selectedMonth = null;
+        let currentRenderYear = viewYear;
         
         let recordedData = {};
 
@@ -346,7 +362,6 @@
                 buildSettingsUI();
             } catch (err) {
                 console.error("DB初期化エラー", err);
-                alert("データの読み込みに失敗しました。");
                 initMonthScreen();
             }
         }
@@ -356,13 +371,11 @@
             cards = [];
             monthSequence = [];
 
-            // ★始まりの月に合わせて12ヶ月を並び替える
             for (let i = 0; i < 12; i++) {
                 let m = ((appStartMonth - 1 + i) % 12) + 1;
                 monthSequence.push(m);
             }
 
-            // 現在の月にフォーカスを当てるためのインデックス探し
             activeMonthIndex = monthSequence.indexOf(currentMonthNumReal);
             if (activeMonthIndex === -1) activeMonthIndex = 0;
 
@@ -371,11 +384,8 @@
                 const card = document.createElement('div');
                 card.className = 'month-card';
                 
-                // データがあるかのチェック（年またぎを考慮）
                 let targetYearForCard = viewYear;
-                if (targetMonthNum < appStartMonth) {
-                    targetYearForCard = viewYear + 1; // 始まりの月より前（例：4月始まりの1月）は来年扱い
-                }
+                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1; 
                 
                 const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
                 if (hasDataInMonth) card.classList.add('has-data');
@@ -433,7 +443,6 @@
 
         function lockScroll() { isScrolling = true; setTimeout(() => { isScrolling = false; }, 400); }
 
-        /* === 設定画面処理 === */
         document.getElementById('open-settings-btn').onclick = () => { settingsScreen.style.display = 'flex'; };
         document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
 
@@ -450,15 +459,13 @@
                     appStartMonth = i;
                     document.querySelectorAll('.month-opt-btn').forEach(b => b.classList.remove('selected'));
                     btn.classList.add('selected');
-                    initMonthScreen(); // 月カードを再構築
+                    initMonthScreen(); 
                 };
                 container.appendChild(btn);
             }
         }
 
-        /* === ホーム（カレンダー）画面処理 === */
-        let currentRenderYear = viewYear;
-
+        /* === ホーム（カレンダー）画面 === */
         function openMonth(month, year) {
             selectedMonth = month;
             currentRenderYear = year;
@@ -553,6 +560,7 @@
             ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
 
+            // ★ボタンのデザインを追加
             ticket.innerHTML = `
                 <div class="ticket-info">
                     <div class="ticket-week">WEEK ${weekNum}</div>
@@ -560,21 +568,38 @@
                 </div>
                 <div class="ticket-play">
                     ${recordedCount > 0 && isViewable ? `<span class="record-badge">${recordedCount} REC</span>` : ''}
-                    ${isViewable ? '▶' : '🔒'}
+                    ${isViewable && recordedCount > 0 ? `
+                        <div class="action-btns">
+                            <button class="ticket-action-btn play-btn">▶</button>
+                            <button class="ticket-action-btn save-btn">📥</button>
+                        </div>
+                    ` : (isViewable ? '▶' : '🔒')}
                 </div>
             `;
             
-            ticket.onclick = () => {
-                if (!isViewable) {
-                    alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
-                    return;
-                }
-                if (recordedCount === 0) {
-                    alert('この週には記録がありません。');
-                } else {
+            // ★クリックイベントの振り分け
+            if (isViewable && recordedCount > 0) {
+                const playBtn = ticket.querySelector('.play-btn');
+                const saveBtn = ticket.querySelector('.save-btn');
+                
+                playBtn.onclick = (e) => {
+                    e.stopPropagation(); // チケット本体のクリックを防ぐ
                     startPlayback(validKeys);
-                }
-            };
+                };
+                saveBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    startExport(validKeys, dateLabel); // エクスポート処理へ
+                };
+                
+                // 余白をクリックした場合は再生にする
+                ticket.onclick = () => startPlayback(validKeys);
+
+            } else if (isViewable && recordedCount === 0) {
+                ticket.onclick = () => alert('この週には記録がありません。');
+            } else {
+                ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
+            }
+
             ticketsArea.appendChild(ticket);
         }
 
@@ -605,7 +630,7 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
                 cameraView.srcObject = stream;
-                cameraView.onplaying = () => { if(drawFrameId) cancelAnimationFrame(drawFrameId); drawToCanvas(); };
+                cameraView.onplaying = () => { if(drawFrameId) cancelAnimationFrame(drawFrameId); drawToCanvas(cameraView); };
 
                 const canvasStream = recordCanvas.captureStream(30);
                 const audioTracks = stream.getAudioTracks();
@@ -622,19 +647,19 @@
                     stopCamera(); cameraScreen.style.display = 'none'; finishScreen.style.display = 'flex';
                 };
             } catch (err) {
-                console.log("カメラ起動エラー:", err); alert("カメラまたはマイクの起動に失敗しました。");
+                console.log("カメラエラー:", err); alert("カメラまたはマイクの起動に失敗しました。");
             }
         }
 
-        function drawToCanvas() {
-            if (!cameraView.srcObject) return;
-            const vw = cameraView.videoWidth; const vh = cameraView.videoHeight;
+        function drawToCanvas(videoEl) {
+            if (!videoEl || videoEl.paused || videoEl.ended) return;
+            const vw = videoEl.videoWidth; const vh = videoEl.videoHeight;
             if (vw > 0 && vh > 0) {
                 let sWidth = vw, sHeight = vw * (9 / 16), sx = 0, sy = (vh - sHeight) / 2;
                 if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
-                recordCanvasCtx.drawImage(cameraView, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
+                recordCanvasCtx.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
             }
-            drawFrameId = requestAnimationFrame(drawToCanvas);
+            drawFrameId = requestAnimationFrame(() => drawToCanvas(videoEl));
         }
 
         function stopCamera() { 
@@ -710,6 +735,118 @@
         }
 
         document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
+
+        /* === ★追加：1週間の書き出し（エクスポート）機能 === */
+        const exportTitle = document.getElementById('export-title');
+        const exportDesc = document.getElementById('export-desc');
+        const exportProgressBar = document.getElementById('export-progress-bar');
+        const exportProgressContainer = document.getElementById('export-progress-container');
+        const exportDownloadLink = document.getElementById('export-download-link');
+        const exportReturnBtn = document.getElementById('export-return-btn');
+
+        async function startExport(keys, dateLabel) {
+            homeScreen.style.display = 'none';
+            exportScreen.style.display = 'flex';
+            
+            // 画面の初期化
+            exportTitle.textContent = "EXPORTING...";
+            exportDesc.innerHTML = "1週間分のフィルムを現像しています<br>このままお待ちください";
+            exportProgressBar.style.width = "0%";
+            exportProgressContainer.style.display = "block";
+            exportDownloadLink.style.display = "none";
+            exportReturnBtn.style.display = "none";
+
+            // 裏側で再生するための隠しVideo要素
+            const exportVideo = document.createElement('video');
+            exportVideo.playsInline = true;
+            exportVideo.muted = false; // 音声を抽出するため
+
+            // 映像と音声を合成する仕組みの準備
+            let audioCtx = null;
+            let dest = null;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                dest = audioCtx.createMediaStreamDestination();
+                const source = audioCtx.createMediaElementSource(exportVideo);
+                source.connect(dest);
+            } catch(e) {
+                console.log("AudioContext fallback:", e);
+            }
+
+            // Canvasから映像を取得し、AudioContextから音声を取得して合成
+            const exportStream = recordCanvas.captureStream(30);
+            if (dest) {
+                dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
+            }
+
+            const exportRecorder = new MediaRecorder(exportStream);
+            const exportChunks = [];
+            exportRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
+
+            let currentIndex = 0;
+            exportRecorder.start();
+
+            // 順番に裏で再生し、Canvasに描画して再録画する
+            async function playNextForExport() {
+                exportProgressBar.style.width = `${(currentIndex / keys.length) * 100}%`;
+
+                if (currentIndex >= keys.length) {
+                    exportRecorder.stop();
+                    return;
+                }
+                
+                const blob = await getVideoFromDB(keys[currentIndex]);
+                exportVideo.src = URL.createObjectURL(blob);
+                
+                exportVideo.play().catch(e => {
+                    console.error("Export play error:", e);
+                    URL.revokeObjectURL(exportVideo.src);
+                    currentIndex++;
+                    playNextForExport(); // エラー時はスキップして次へ
+                });
+
+                exportVideo.onplaying = () => {
+                    if(drawFrameId) cancelAnimationFrame(drawFrameId);
+                    drawToCanvas(exportVideo);
+                };
+                
+                exportVideo.onended = () => {
+                    cancelAnimationFrame(drawFrameId);
+                    URL.revokeObjectURL(exportVideo.src);
+                    currentIndex++;
+                    playNextForExport();
+                };
+            }
+
+            // 全ての再録画が終わったらファイルにする
+            exportRecorder.onstop = () => {
+                exportProgressBar.style.width = "100%";
+                
+                setTimeout(() => {
+                    const mime = exportRecorder.mimeType || '';
+                    const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+                    const mergedBlob = new Blob(exportChunks, { type: mime || 'video/mp4' });
+                    const safeDateLabel = dateLabel.replace(/\s+/g, '_').replace(/\//g, '-');
+                    
+                    exportTitle.textContent = "COMPLETE.";
+                    exportDesc.innerHTML = "フィルムの現像が完了しました<br>端末に保存してください";
+                    exportProgressContainer.style.display = "none";
+                    
+                    exportDownloadLink.href = URL.createObjectURL(mergedBlob);
+                    exportDownloadLink.download = `1Year2Hours_${safeDateLabel}.${ext}`;
+                    exportDownloadLink.style.display = "block";
+                    exportReturnBtn.style.display = "block";
+                }, 500);
+            };
+
+            playNextForExport();
+        }
+
+        exportReturnBtn.onclick = () => {
+            if(exportDownloadLink.href) URL.revokeObjectURL(exportDownloadLink.href);
+            exportScreen.style.display = 'none';
+            homeScreen.style.display = 'flex';
+        };
 
         /* --- ナビゲーション --- */
         document.getElementById('camera-back-btn').onclick = () => {
