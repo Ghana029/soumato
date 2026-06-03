@@ -117,7 +117,7 @@
         .video-element { width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
         .watermark-overlay {
             position: absolute; bottom: 12px; right: 15px;
-            color: rgba(244, 235, 208, 0.85); font-family: 'Times New Roman', Courier, monospace; font-size: 14px; font-weight: bold;
+            color: rgba(244, 235, 208, 0.85); font-family: 'Courier New', Courier, monospace; font-size: 14px; font-weight: bold;
             letter-spacing: 1px; text-shadow: 1px 1px 4px rgba(0,0,0,0.9); z-index: 30; pointer-events: none; display: none;
         }
 
@@ -129,6 +129,13 @@
         #record-timer { position: absolute; top: 10px; right: 15px; color: #b22222; font-family: monospace; font-size: 14px; letter-spacing: 2px; z-index: 10; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px; }
         #progress-container { width: 100%; height: 6px; background-color: #111; position: absolute; bottom: 0; left: 0; z-index: 10; }
         #progress-bar { height: 100%; width: 0%; background-color: #b22222; transition: width 0.1s linear; box-shadow: 0 0 10px rgba(178, 34, 34, 0.8); }
+
+        /* ★追加：カメラ切り替えボタン */
+        #flip-camera-btn {
+            position: absolute; top: 10px; left: 15px; z-index: 10; background: rgba(0,0,0,0.5); color: #f4ebd0;
+            border: 1px solid #444; border-radius: 50%; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center;
+            font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
 
         .controls { flex-grow: 1; display: flex; align-items: center; justify-content: center; }
         #record-btn { width: 70px; height: 70px; border-radius: 50%; background-color: #b22222; border: 4px solid #f4ebd0; cursor: pointer; outline: none; transition: transform 0.2s; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
@@ -160,16 +167,13 @@
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
         .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; font-family: inherit; cursor: pointer; border-radius: 20px; margin-top: 40px; }
 
-        /* --- 7. 書き出し画面（モニター機能付き） --- */
+        /* --- 7. 書き出し画面 --- */
         #export-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; background-color: #0a0a0a; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; }
-        
-        /* ★追加：現像中の映像を見せるモニター */
         #export-canvas {
             width: 80%; max-width: 320px; aspect-ratio: 16 / 9;
             background-color: #000; border-radius: 4px; box-shadow: 0 5px 25px rgba(0,0,0,0.8);
             margin-bottom: 30px; border: 1px solid #333; filter: grayscale(30%);
         }
-
         #export-progress-container { width: 60%; height: 4px; background-color: #333; margin-bottom: 40px; border-radius: 2px; overflow: hidden; }
         #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
         #export-download-link { text-decoration: none; margin-bottom: 20px; }
@@ -179,6 +183,7 @@
 <body>
 
     <div id="app">
+        <!-- 1. 月選択画面 -->
         <div id="month-screen">
             <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
             <div id="month-list"></div>
@@ -187,6 +192,7 @@
             </div>
         </div>
 
+        <!-- 2. ホーム画面 -->
         <div id="home-screen">
             <header class="home-header">
                 <button class="back-btn" id="month-back-btn">&lt; BACK</button>
@@ -202,6 +208,7 @@
             </div>
         </div>
 
+        <!-- 3. 撮影画面 -->
         <div id="camera-screen">
             <header class="camera-header">
                 <button class="back-btn" id="camera-back-btn">&lt; BACK</button>
@@ -209,6 +216,7 @@
                 <div class="header-spacer"></div>
             </header>
             <div class="video-container">
+                <button id="flip-camera-btn">🔄</button>
                 <video id="camera-view" class="video-element" autoplay muted playsinline></video>
                 <div class="mock-text">CAMERA SETUP...</div>
                 <div id="camera-watermark" class="watermark-overlay"></div>
@@ -218,12 +226,14 @@
             <div class="controls"><button id="record-btn"></button></div>
         </div>
 
+        <!-- 4. CUT画面 -->
         <div id="finish-screen">
             <div class="finish-title">CUT.</div>
             <div class="finish-desc">今日の記録をフィルムに焼き付けました</div>
             <button class="finish-btn" id="finish-ok-btn">RETURN</button>
         </div>
 
+        <!-- 5. 再生画面 -->
         <div id="playback-screen">
             <header class="camera-header">
                 <button class="back-btn" id="playback-back-btn">&lt; BACK</button>
@@ -236,6 +246,7 @@
             </div>
         </div>
 
+        <!-- 6. 設定画面 -->
         <div id="settings-screen">
             <div class="settings-title">始まりの月</div>
             <div class="month-select-container" id="month-select-container"></div>
@@ -250,6 +261,7 @@
             <button id="reset-db-btn" style="margin-top:40px; background:none; border:1px solid #444; color:#666; padding:5px 10px; font-size:10px; border-radius:10px;">RESET ALL DATA</button>
         </div>
 
+        <!-- 7. 書き出し画面 -->
         <div id="export-screen">
             <div class="finish-title" id="export-title" style="font-size:24px;">EXPORTING...</div>
             <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください</div>
@@ -264,35 +276,74 @@
 
     <script>
         /* =========================================
-           1. 例外安全な初期設定取得
+           1. 初期設定とオーディオエンジン（サウンド演出）
         ========================================= */
         let appStartMonth = 1;
         let showWatermark = true;
+        let useFrontCamera = false; // イン/アウトカメラのフラグ
 
         try {
             appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
             showWatermark = localStorage.getItem('showWatermark') !== 'false';
-        } catch (e) {
-            console.warn("LocalStorage制限");
-        }
+        } catch (e) { console.warn("LocalStorage制限"); }
 
-        /* =========================================
-           2. オーディオエンジンの準備（フリーズ対策の要）
-        ========================================= */
         let globalAudioCtx = null;
+        let projectorInterval = null;
+
         function initAudio() {
             try {
-                if (!globalAudioCtx) {
-                    globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (globalAudioCtx.state === 'suspended') {
-                    globalAudioCtx.resume();
-                }
-            } catch(e) { console.warn("AudioContext初期化エラー", e); }
+                if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
+            } catch(e) {}
+        }
+
+        // ★追加：録画開始時のシャッター音（レトロ風）
+        function playShutterSound() {
+            if (!globalAudioCtx) return;
+            try {
+                const t = globalAudioCtx.currentTime;
+                const osc = globalAudioCtx.createOscillator();
+                const gain = globalAudioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200, t);
+                osc.frequency.exponentialRampToValueAtTime(20, t + 0.1);
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                osc.connect(gain);
+                gain.connect(globalAudioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.1);
+            } catch(e) {}
+        }
+
+        // ★追加：再生・現像中の映写機のカタカタ音
+        function startProjectorSound() {
+            if (!globalAudioCtx) return;
+            stopProjectorSound(); // 重複防止
+            projectorInterval = setInterval(() => {
+                try {
+                    const t = globalAudioCtx.currentTime;
+                    const osc = globalAudioCtx.createOscillator();
+                    const gain = globalAudioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, t);
+                    osc.frequency.exponentialRampToValueAtTime(100, t + 0.05);
+                    gain.gain.setValueAtTime(0.02, t); 
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+                    osc.connect(gain);
+                    gain.connect(globalAudioCtx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.05);
+                } catch(e) {}
+            }, 150); // 8mmフィルムのテンポ
+        }
+
+        function stopProjectorSound() {
+            if (projectorInterval) clearInterval(projectorInterval);
         }
 
         /* =========================================
-           3. データベース（IndexedDB）操作
+           2. データベース（IndexedDB）操作
         ========================================= */
         const dbName = 'OneYearInTwoHoursDB_v4';
         const storeName = 'videos';
@@ -304,9 +355,7 @@
                     const request = indexedDB.open(dbName, 1);
                     request.onupgradeneeded = (e) => {
                         const database = e.target.result;
-                        if (!database.objectStoreNames.contains(storeName)) {
-                            database.createObjectStore(storeName); 
-                        }
+                        if (!database.objectStoreNames.contains(storeName)) { database.createObjectStore(storeName); }
                     };
                     request.onsuccess = (e) => { db = e.target.result; resolve(); };
                     request.onerror = (e) => reject(request.error);
@@ -349,15 +398,12 @@
 
         document.getElementById('reset-db-btn').onclick = () => {
             if(confirm("※注意※\nすべての録画データを消去してリセットしますか？")) {
-                try {
-                    const req = indexedDB.deleteDatabase(dbName);
-                    req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); };
-                } catch(e) { alert("リセットに失敗しました。"); }
+                try { const req = indexedDB.deleteDatabase(dbName); req.onsuccess = () => { alert("データをリセットしました。"); location.reload(); }; } catch(e) {}
             }
         };
 
         /* =========================================
-           4. アプリのUIとロジック構築
+           3. アプリのUIとロジック構築
         ========================================= */
         const monthScreen = document.getElementById('month-screen');
         const monthList = document.getElementById('month-list');
@@ -407,48 +453,31 @@
         let recordedData = {};
 
         async function startApp() {
-            try {
-                await initDB();
-                const keys = await getAllRecordedKeys();
-                keys.forEach(key => { recordedData[key] = true; });
-            } catch (err) { console.warn("DBエラー", err); }
-            initMonthScreen();
-            buildSettingsUI();
+            try { await initDB(); const keys = await getAllRecordedKeys(); keys.forEach(key => { recordedData[key] = true; }); } catch (err) {}
+            initMonthScreen(); buildSettingsUI();
         }
 
         function initMonthScreen() {
-            monthList.innerHTML = '';
-            cards = [];
-            monthSequence = [];
-            for (let i = 0; i < 12; i++) {
-                let m = ((appStartMonth - 1 + i) % 12) + 1;
-                monthSequence.push(m);
-            }
+            monthList.innerHTML = ''; cards = []; monthSequence = [];
+            for (let i = 0; i < 12; i++) { let m = ((appStartMonth - 1 + i) % 12) + 1; monthSequence.push(m); }
             activeMonthIndex = monthSequence.indexOf(currentMonthNumReal);
             if (activeMonthIndex === -1) activeMonthIndex = 0;
 
             for (let i = 0; i < 12; i++) {
                 let targetMonthNum = monthSequence[i];
-                const card = document.createElement('div');
-                card.className = 'month-card';
+                const card = document.createElement('div'); card.className = 'month-card';
+                let targetYearForCard = viewYear; if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1; 
+                if (Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`))) card.classList.add('has-data');
                 
-                let targetYearForCard = viewYear;
-                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1; 
-                
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
-                if (hasDataInMonth) card.classList.add('has-data');
-                
-                const nameSpan = document.createElement('div');
-                nameSpan.className = 'month-name';
-                nameSpan.textContent = monthNames[targetMonthNum - 1];
+                const nameSpan = document.createElement('div'); nameSpan.className = 'month-name'; nameSpan.textContent = monthNames[targetMonthNum - 1];
                 card.appendChild(nameSpan);
 
                 card.onclick = () => {
+                    initAudio();
                     if (i === activeMonthIndex) { openMonth(targetMonthNum, targetYearForCard); } 
                     else if (i === activeMonthIndex - 1 || i === activeMonthIndex + 1) { activeMonthIndex = i; updateMonthCards(); }
                 };
-                monthList.appendChild(card);
-                cards.push(card);
+                monthList.appendChild(card); cards.push(card);
             }
             updateMonthCards();
         }
@@ -457,11 +486,8 @@
             cards.forEach((card, index) => {
                 card.className = 'month-card'; 
                 let targetMonthNum = monthSequence[index];
-                let targetYearForCard = viewYear;
-                if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1;
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`));
-                if (hasDataInMonth) card.classList.add('has-data');
-
+                let targetYearForCard = viewYear; if (targetMonthNum < appStartMonth) targetYearForCard = viewYear + 1;
+                if (Object.keys(recordedData).some(key => key.startsWith(`${targetYearForCard}-${targetMonthNum}-`))) card.classList.add('has-data');
                 if (index === activeMonthIndex) card.classList.add('active');
                 else if (index === activeMonthIndex - 1) card.classList.add('prev');
                 else if (index === activeMonthIndex + 1) card.classList.add('next');
@@ -470,8 +496,7 @@
             });
         }
 
-        let isScrolling = false;
-        let startY = 0;
+        let isScrolling = false; let startY = 0;
         monthScreen.addEventListener('wheel', (e) => {
             if (isScrolling) return;
             if (e.deltaY > 20 && activeMonthIndex < 11) { activeMonthIndex++; updateMonthCards(); lockScroll(); }
@@ -480,46 +505,42 @@
         monthScreen.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
         monthScreen.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; });
         monthScreen.addEventListener('touchend', (e) => {
-            const endY = e.changedTouches[0].clientY;
-            const delta = startY - endY;
+            const endY = e.changedTouches[0].clientY; const delta = startY - endY;
             if (delta > 30 && activeMonthIndex < 11) { activeMonthIndex++; updateMonthCards(); }
             else if (delta < -30 && activeMonthIndex > 0) { activeMonthIndex--; updateMonthCards(); }
         });
         function lockScroll() { isScrolling = true; setTimeout(() => { isScrolling = false; }, 400); }
 
-        document.getElementById('open-settings-btn').onclick = () => { settingsScreen.style.display = 'flex'; };
+        document.getElementById('open-settings-btn').onclick = () => { initAudio(); settingsScreen.style.display = 'flex'; };
         document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
 
         function buildSettingsUI() {
-            const container = document.getElementById('month-select-container');
-            container.innerHTML = '';
+            const container = document.getElementById('month-select-container'); container.innerHTML = '';
             for(let i=1; i<=12; i++) {
-                const btn = document.createElement('button');
-                btn.className = 'month-opt-btn';
+                const btn = document.createElement('button'); btn.className = 'month-opt-btn';
                 if(i === appStartMonth) btn.classList.add('selected');
                 btn.textContent = `${i}月`;
                 btn.onclick = () => {
+                    initAudio();
                     try { localStorage.setItem('appStartMonth', i); } catch(e){}
                     appStartMonth = i;
                     document.querySelectorAll('#month-select-container .month-opt-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    initMonthScreen(); 
+                    btn.classList.add('selected'); initMonthScreen(); 
                 };
                 container.appendChild(btn);
             }
 
-            const wOnBtn = document.getElementById('watermark-on-btn');
-            const wOffBtn = document.getElementById('watermark-off-btn');
+            const wOnBtn = document.getElementById('watermark-on-btn'); const wOffBtn = document.getElementById('watermark-off-btn');
             wOnBtn.classList.remove('selected'); wOffBtn.classList.remove('selected');
             if(showWatermark) wOnBtn.classList.add('selected'); else wOffBtn.classList.add('selected');
 
             wOnBtn.onclick = () => {
-                showWatermark = true;
+                initAudio(); showWatermark = true;
                 try { localStorage.setItem('showWatermark', 'true'); } catch(e){}
                 wOnBtn.classList.add('selected'); wOffBtn.classList.remove('selected');
             };
             wOffBtn.onclick = () => {
-                showWatermark = false;
+                initAudio(); showWatermark = false;
                 try { localStorage.setItem('showWatermark', 'false'); } catch(e){}
                 wOffBtn.classList.add('selected'); wOnBtn.classList.remove('selected');
             };
@@ -540,41 +561,28 @@
             const startDate = new Date(firstDayOfMonth); startDate.setDate(startDate.getDate() - startDate.getDay());
             const endDate = new Date(lastDayOfMonth); endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
 
-            let currentDate = new Date(startDate);
-            let weekDatesArray = [];
-            let weekNum = 1;
+            let currentDate = new Date(startDate); let weekDatesArray = []; let weekNum = 1;
 
             while (currentDate <= endDate) {
                 const boxYear = currentDate.getFullYear(); const boxMonth = currentDate.getMonth() + 1; const boxDate = currentDate.getDate();
                 const dataKey = `${boxYear}-${boxMonth}-${boxDate}`;
-
-                const dayBox = document.createElement('div');
-                dayBox.className = 'day-box';
+                const dayBox = document.createElement('div'); dayBox.className = 'day-box';
                 if (boxMonth !== selectedMonth) dayBox.classList.add('out-of-month');
-
                 const isToday = (boxYear === currentYearReal && boxMonth === currentMonthNumReal && boxDate === currentDateReal);
                 if (isToday) dayBox.classList.add('today');
                 if (recordedData[dataKey]) dayBox.classList.add('recorded');
 
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
-                // ▼ 変更前（本来の厳密なルール：今日しか撮影できない）
-
-
-
-// ▼ 変更後（テスト用：空のマスなら、過去でも未来でもいつでも撮影できる！）
-dayBox.onclick = () => {
-    if (recordedData[dataKey]) {
-        startPlayback([dataKey]); 
-        return;
-    }
-    // エラーメッセージを消して、無条件でカメラを開く
-    openCameraScreen(boxYear, boxMonth, boxDate);
-};
+                dayBox.onclick = () => {
+                    initAudio(); 
+                    if (recordedData[dataKey]) { startPlayback([dataKey]); return; }
+                    
+                    // テスト時はこの条件分岐を消して openCameraScreen を呼ぶ
+                    if (isToday) { openCameraScreen(boxYear, boxMonth, boxDate); } else { if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); }
+                };
                 
-                calendarElement.appendChild(dayBox);
-                weekDatesArray.push(new Date(currentDate));
-
+                calendarElement.appendChild(dayBox); weekDatesArray.push(new Date(currentDate));
                 if (currentDate.getDay() === 6) { createTicket(weekNum, weekDatesArray); weekNum++; weekDatesArray = []; }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -591,32 +599,26 @@ dayBox.onclick = () => {
                 if (recordedData[key]) validKeys.push(key);
             });
             const recordedCount = validKeys.length;
-
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
             const isLastDayRecorded = !!recordedData[lastDateKey]; 
             const isWeekOver = todayResetObj > endDay; 
             
-            // ★テスト用の裏技：以下の行を const isViewable = true; に変更すると全チケットが解放されます。
+            // テスト時はここを const isViewable = true; にする
             // ▼ 変更前（本来の厳密なロック機能）
 
 
 
 // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
 const isViewable = true;
-            const ticket = document.createElement('div');
-            ticket.className = 'ticket';
+
+            const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
 
             ticket.innerHTML = `
                 <div class="ticket-info"><div class="ticket-week">WEEK ${weekNum}</div><div class="ticket-dates">${dateLabel}</div></div>
                 <div class="ticket-play">
                     ${recordedCount > 0 && isViewable ? `<span class="record-badge">${recordedCount} REC</span>` : ''}
-                    ${isViewable && recordedCount > 0 ? `
-                        <div class="action-btns">
-                            <button class="ticket-action-btn play-btn">▶</button>
-                            <button class="ticket-action-btn save-btn">📥</button>
-                        </div>
-                    ` : (isViewable ? '▶' : '🔒')}
+                    ${isViewable && recordedCount > 0 ? `<div class="action-btns"><button class="ticket-action-btn play-btn">▶</button><button class="ticket-action-btn save-btn">📥</button></div>` : (isViewable ? '▶' : '🔒')}
                 </div>
             `;
             
@@ -625,11 +627,8 @@ const isViewable = true;
                 playBtn.onclick = (e) => { e.stopPropagation(); initAudio(); startPlayback(validKeys); };
                 saveBtn.onclick = (e) => { e.stopPropagation(); initAudio(); startExport(validKeys, dateLabel); };
                 ticket.onclick = () => { initAudio(); startPlayback(validKeys); };
-            } else if (isViewable && recordedCount === 0) {
-                ticket.onclick = () => alert('この週には記録がありません。');
-            } else {
-                ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
-            }
+            } else if (isViewable && recordedCount === 0) { ticket.onclick = () => alert('この週には記録がありません。');
+            } else { ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。'); }
             ticketsArea.appendChild(ticket);
         }
 
@@ -637,13 +636,19 @@ const isViewable = true;
         let isRecording = false; let totalRecordTime = 0; let timerInterval; let mediaRecorder; let recordedChunks = [];
         const MAX_RECORD_TIME = 20000;
 
+        // ★追加：カメラ切り替え機能
+        document.getElementById('flip-camera-btn').onclick = () => {
+            initAudio();
+            useFrontCamera = !useFrontCamera;
+            stopCamera();
+            startCamera();
+        };
+
         function openCameraScreen(y, m, d) {
             recordTargetYear = y; recordTargetMonth = m; recordTargetDay = d;
             currentRecordingDateStr = `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
-            
             cameraDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - REC`;
             
-            // HTML上のオーバーレイで日付を表示
             if (showWatermark) { cameraWatermark.textContent = currentRecordingDateStr; cameraWatermark.style.display = 'block'; } 
             else { cameraWatermark.style.display = 'none'; }
 
@@ -655,9 +660,16 @@ const isViewable = true;
 
         async function startCamera() {
             try {
-                // キャンバスを通さず生の映像を確実に保存する
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { aspectRatio: 16/9, facingMode: "environment" }, audio: true });
+                // ★カメラの向き（facingMode）を動的に設定
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { aspectRatio: 16/9, facingMode: useFrontCamera ? "user" : "environment" }, 
+                    audio: true 
+                });
                 cameraView.srcObject = stream;
+                
+                // インカメラの時は映像を鏡合わせにする
+                cameraView.style.transform = useFrontCamera ? "scaleX(-1)" : "scaleX(1)";
+
                 mediaRecorder = new MediaRecorder(stream);
                 mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) recordedChunks.push(event.data); };
                 mediaRecorder.onstop = async () => {
@@ -668,18 +680,23 @@ const isViewable = true;
                     catch(e) { console.error("保存失敗", e); alert("動画の保存に失敗しました。"); }
                     stopCamera(); cameraScreen.style.display = 'none'; finishScreen.style.display = 'flex';
                 };
-            } catch (err) { alert("カメラまたはマイクの起動に失敗しました。"); }
+            } catch (err) { alert("カメラの起動に失敗しました。アクセスを許可してください。"); }
         }
 
         function stopCamera() { if (cameraView.srcObject) cameraView.srcObject.getTracks().forEach(t => t.stop()); }
 
         recordBtn.onclick = function() {
+            initAudio();
             if (!mediaRecorder) return;
             if (isRecording) {
                 isRecording = false; recordBtn.classList.remove('recording'); clearInterval(timerInterval);
                 if (mediaRecorder.state === 'recording') mediaRecorder.pause(); 
             } else {
                 isRecording = true; recordBtn.classList.add('recording');
+                
+                // ★シャッター音を鳴らす
+                playShutterSound();
+
                 if (mediaRecorder.state === 'inactive') mediaRecorder.start(200); 
                 else if (mediaRecorder.state === 'paused') mediaRecorder.resume(); 
 
@@ -697,6 +714,7 @@ const isViewable = true;
         }
 
         document.getElementById('finish-ok-btn').onclick = () => {
+            initAudio();
             finishScreen.style.display = 'none'; homeScreen.style.display = 'flex';
             renderCalendarAndTickets(); initMonthScreen();
         };
@@ -719,7 +737,9 @@ const isViewable = true;
             }
             if (playlistUrls.length === 0) { alert("再生できる動画が見つかりませんでした。"); return; }
             homeScreen.style.display = 'none'; playbackScreen.style.display = 'flex';
-            currentPlayIndex = 0; playNextInPlaylist();
+            currentPlayIndex = 0; 
+            startProjectorSound(); // ★映写機の音をスタート
+            playNextInPlaylist();
         }
 
         function playNextInPlaylist() {
@@ -737,13 +757,20 @@ const isViewable = true;
             playbackView.onended = () => { currentPlayIndex++; playNextInPlaylist(); };
         }
 
-        playbackContainer.onclick = () => { if (playbackView.paused) playbackView.play(); else playbackView.pause(); };
+        playbackContainer.onclick = () => { 
+            initAudio();
+            if (playbackView.paused) { playbackView.play(); startProjectorSound(); }
+            else { playbackView.pause(); stopProjectorSound(); }
+        };
 
         function closePlaybackScreen() {
             playbackView.pause(); playbackView.onended = null; 
+            stopProjectorSound(); // 音を止める
             playlistUrls.forEach(item => URL.revokeObjectURL(item.url)); playlistUrls = [];
             playbackView.src = ""; playbackScreen.style.display = 'none'; homeScreen.style.display = 'flex';
         }
+
+        document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
 
         /* === 8. 書き出し（エクスポート）システム === */
         const exportTitle = document.getElementById('export-title');
@@ -765,17 +792,14 @@ const isViewable = true;
             const exportVideo = document.createElement('video');
             exportVideo.playsInline = true; exportVideo.muted = false; 
 
-            // ★防波堤：途切れない音声トラックの構築
-            let dest = null;
-            let dummyOsc = null;
+            // 防波堤：途切れない音声トラックの構築
+            let dest = null; let dummyOsc = null;
             if (globalAudioCtx) {
                 dest = globalAudioCtx.createMediaStreamDestination();
                 dummyOsc = globalAudioCtx.createOscillator();
                 const dummyGain = globalAudioCtx.createGain();
                 dummyGain.gain.value = 0.0001; 
-                dummyOsc.connect(dummyGain);
-                dummyGain.connect(dest);
-                dummyOsc.start();
+                dummyOsc.connect(dummyGain); dummyGain.connect(dest); dummyOsc.start();
                 const source = globalAudioCtx.createMediaElementSource(exportVideo);
                 source.connect(dest);
             }
@@ -785,16 +809,14 @@ const isViewable = true;
 
             let mime = 'video/webm';
             if (MediaRecorder.isTypeSupported('video/mp4')) mime = 'video/mp4';
-
             const exportRecorder = new MediaRecorder(exportStream, { mimeType: mime });
             const exportChunks = [];
             exportRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
 
-            let currentIndex = 0;
-            let isExporting = true;
-            let exportDateStr = "";
+            let currentIndex = 0; let isExporting = true; let exportDateStr = "";
 
-            // 現像キャンバスへの描画（ここで16:9切り抜きと日付焼き付けを完璧に行う）
+            startProjectorSound(); // 現像中も映写機の音を鳴らす
+
             function exportDrawLoop() {
                 if (!isExporting) return;
                 exportCanvasCtx.fillStyle = '#000'; exportCanvasCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
@@ -820,15 +842,13 @@ const isViewable = true;
                 requestAnimationFrame(exportDrawLoop);
             }
 
-            exportRecorder.start(1000); // 1秒ごとにチャンクを刻んで安定化
+            exportRecorder.start(1000); 
             exportDrawLoop(); 
 
             async function playNextForExport() {
                 exportProgressBar.style.width = `${(currentIndex / keys.length) * 100}%`;
                 if (currentIndex >= keys.length) {
-                    isExporting = false; 
-                    setTimeout(() => { exportRecorder.stop(); }, 500); 
-                    return;
+                    isExporting = false; setTimeout(() => { exportRecorder.stop(); }, 500); return;
                 }
                 
                 const parts = keys[currentIndex].split('-');
@@ -846,6 +866,7 @@ const isViewable = true;
 
             exportRecorder.onstop = () => {
                 exportProgressBar.style.width = "100%";
+                stopProjectorSound();
                 if(dummyOsc) dummyOsc.stop();
                 
                 setTimeout(() => {
@@ -866,11 +887,15 @@ const isViewable = true;
             playNextForExport();
         }
 
+        exportReturnBtn.onclick = () => {
+            initAudio();
+            if(exportDownloadLink.href) URL.revokeObjectURL(exportDownloadLink.href);
+            exportScreen.style.display = 'none'; homeScreen.style.display = 'flex';
+        };
+
         /* --- ナビゲーション --- */
-        document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
-        exportReturnBtn.onclick = () => { if(exportDownloadLink.href) URL.revokeObjectURL(exportDownloadLink.href); exportScreen.style.display = 'none'; homeScreen.style.display = 'flex'; };
-        document.getElementById('camera-back-btn').onclick = () => { isRecording = false; clearInterval(timerInterval); if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); stopCamera(); cameraScreen.style.display = 'none'; homeScreen.style.display = 'flex'; };
-        document.getElementById('month-back-btn').onclick = () => { homeScreen.style.display = 'none'; monthScreen.style.display = 'flex'; activeMonthIndex = monthSequence.indexOf(selectedMonth); if (activeMonthIndex === -1) activeMonthIndex = 0; updateMonthCards(); };
+        document.getElementById('camera-back-btn').onclick = () => { initAudio(); isRecording = false; clearInterval(timerInterval); if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); stopCamera(); cameraScreen.style.display = 'none'; homeScreen.style.display = 'flex'; };
+        document.getElementById('month-back-btn').onclick = () => { initAudio(); homeScreen.style.display = 'none'; monthScreen.style.display = 'flex'; activeMonthIndex = monthSequence.indexOf(selectedMonth); if (activeMonthIndex === -1) activeMonthIndex = 0; updateMonthCards(); };
 
         startApp();
     </script>
