@@ -207,22 +207,25 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .day-box.empty {
-            background-color: transparent;
-            border: none;
-            cursor: default;
+        /* ★前後の月の日付のデザイン */
+        .day-box.out-of-month {
+            opacity: 0.4;
+            background-color: #151515;
+            border-color: #222;
         }
 
         .day-box.today {
             border: 2px solid #b22222;
             color: #f4ebd0;
             box-shadow: inset 0 0 15px rgba(178, 34, 34, 0.2);
+            opacity: 1; /* out-of-monthでも今日はハッキリさせる */
         }
 
         .day-box.recorded {
             background-color: #4a3f35;
             color: #f4ebd0;
             border-color: #665;
+            opacity: 1; /* 録画済みならハッキリ表示 */
         }
         
         .day-box.recorded::after {
@@ -296,6 +299,19 @@
 
         .ticket-play {
             font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* チケットに録画日数を表示するバッジ */
+        .record-badge {
+            font-size: 10px;
+            background: #b22222;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
         }
 
         /* --- 3. 撮影画面 --- */
@@ -340,7 +356,6 @@
             z-index: 1;
         }
 
-        /* ★追加：タイマーのテキスト表示 */
         #record-timer {
             position: absolute;
             top: 10px;
@@ -370,7 +385,7 @@
             width: 0%;
             background-color: #b22222;
             transition: width 0.1s linear;
-            box-shadow: 0 0 10px rgba(178, 34, 34, 0.8); /* 少し発光させる */
+            box-shadow: 0 0 10px rgba(178, 34, 34, 0.8);
         }
 
         .controls {
@@ -513,9 +528,7 @@
             <div class="video-container">
                 <video id="camera-view" autoplay muted playsinline></video>
                 <div class="mock-text">CAMERA SETUP...</div>
-                
                 <div id="record-timer">00:00 / 00:20</div>
-
                 <div id="progress-container">
                     <div id="progress-bar"></div>
                 </div>
@@ -568,19 +581,26 @@
         const progressBar = document.getElementById('progress-bar');
         const recordTimer = document.getElementById('record-timer');
 
+        // 今日の日付を取得
         const todayDateObj = new Date();
-        const currentYear = todayDateObj.getFullYear();
+        const currentYearReal = todayDateObj.getFullYear();
         const currentMonthNumReal = todayDateObj.getMonth() + 1;
         const currentDateReal = todayDateObj.getDate();
 
-        document.getElementById('current-year-display').textContent = currentYear;
+        // 画面上部の年表示
+        const viewYear = currentYearReal;
+        document.getElementById('current-year-display').textContent = viewYear;
         
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         let activeMonthIndex = currentMonthNumReal - 1; 
         let cards = [];
-        let currentSelectedDay = null;
-        let selectedMonth = currentMonthNumReal;
         
+        // 録画する際に「実際に押したマス目の日付」を保持する変数
+        let recordTargetYear = null;
+        let recordTargetMonth = null;
+        let recordTargetDay = null;
+        
+        let selectedMonth = currentMonthNumReal;
         const recordedData = {};
 
         function initMonthScreen() {
@@ -591,15 +611,12 @@
                 const card = document.createElement('div');
                 card.className = 'month-card';
                 
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${currentYear}-${i + 1}-`));
-                if (hasDataInMonth) {
-                    card.classList.add('has-data');
-                }
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${viewYear}-${i + 1}-`));
+                if (hasDataInMonth) card.classList.add('has-data');
 
                 const nameSpan = document.createElement('div');
                 nameSpan.className = 'month-name';
                 nameSpan.textContent = monthNames[i];
-                
                 card.appendChild(nameSpan);
 
                 card.onclick = () => {
@@ -620,8 +637,7 @@
         function updateMonthCards() {
             cards.forEach((card, index) => {
                 card.className = 'month-card'; 
-                
-                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${currentYear}-${index + 1}-`));
+                const hasDataInMonth = Object.keys(recordedData).some(key => key.startsWith(`${viewYear}-${index + 1}-`));
                 if (hasDataInMonth) card.classList.add('has-data');
 
                 if (index === activeMonthIndex) {
@@ -644,17 +660,9 @@
         monthScreen.addEventListener('wheel', (e) => {
             if (isScrolling) return;
             if (e.deltaY > 20) {
-                if (activeMonthIndex < 11) {
-                    activeMonthIndex++;
-                    updateMonthCards();
-                    lockScroll();
-                }
+                if (activeMonthIndex < 11) { activeMonthIndex++; updateMonthCards(); lockScroll(); }
             } else if (e.deltaY < -20) {
-                if (activeMonthIndex > 0) {
-                    activeMonthIndex--;
-                    updateMonthCards();
-                    lockScroll();
-                }
+                if (activeMonthIndex > 0) { activeMonthIndex--; updateMonthCards(); lockScroll(); }
             }
         });
 
@@ -663,7 +671,6 @@
         monthScreen.addEventListener('touchend', (e) => {
             const endY = e.changedTouches[0].clientY;
             const delta = startY - endY;
-            
             if (delta > 30) {
                 if (activeMonthIndex < 11) { activeMonthIndex++; updateMonthCards(); }
             } else if (delta < -30) {
@@ -684,49 +691,63 @@
             renderCalendarAndTickets();
         }
 
+        // ★大幅アップデート：月をまたぐカレンダーとチケットの描画
         function renderCalendarAndTickets() {
             calendarElement.innerHTML = '';
             ticketsArea.innerHTML = '';
 
-            const firstDay = new Date(currentYear, selectedMonth - 1, 1);
-            const lastDay = new Date(currentYear, selectedMonth, 0);
-            
-            const startDayOfWeek = firstDay.getDay();
-            const totalDays = lastDay.getDate();
+            // 選択された月の初日と末日
+            const firstDayOfMonth = new Date(viewYear, selectedMonth - 1, 1);
+            const lastDayOfMonth = new Date(viewYear, selectedMonth, 0);
 
-            let currentWeekNum = 1;
-            let weekStartDate = 1;
+            // カレンダーの開始日（初日が属する週の日曜日）
+            const startDate = new Date(firstDayOfMonth);
+            startDate.setDate(startDate.getDate() - startDate.getDay());
 
-            for (let i = 0; i < startDayOfWeek; i++) {
-                const emptyBox = document.createElement('div');
-                emptyBox.className = 'day-box empty';
-                calendarElement.appendChild(emptyBox);
-            }
+            // カレンダーの終了日（末日が属する週の土曜日）
+            const endDate = new Date(lastDayOfMonth);
+            endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
 
-            for (let day = 1; day <= totalDays; day++) {
+            let currentDate = new Date(startDate);
+            let weekDatesArray = [];
+            let weekNum = 1;
+
+            // 日曜日から土曜日まで、ループでカレンダーを生成
+            while (currentDate <= endDate) {
+                const boxYear = currentDate.getFullYear();
+                const boxMonth = currentDate.getMonth() + 1;
+                const boxDate = currentDate.getDate();
+                const dataKey = `${boxYear}-${boxMonth}-${boxDate}`;
+
                 const dayBox = document.createElement('div');
                 dayBox.className = 'day-box';
-                const dataKey = `${currentYear}-${selectedMonth}-${day}`;
                 
-                const isToday = (currentYear === currentYear && selectedMonth === currentMonthNumReal && day === currentDateReal);
+                // 選択している月以外の日は色を暗くする
+                if (boxMonth !== selectedMonth) {
+                    dayBox.classList.add('out-of-month');
+                }
+
+                // 今日の判定
+                const isToday = (boxYear === currentYearReal && boxMonth === currentMonthNumReal && boxDate === currentDateReal);
                 if (isToday) dayBox.classList.add('today');
                 if (recordedData[dataKey]) dayBox.classList.add('recorded');
 
                 const dayText = document.createElement('span');
-                dayText.textContent = day;
+                dayText.textContent = boxDate;
                 dayBox.appendChild(dayText);
                 
+                // クリック時の処理（正確な年月日を渡す）
                 dayBox.onclick = () => {
                     if (recordedData[dataKey]) {
-                        openPlaybackScreen(day, recordedData[dataKey]);
+                        openPlaybackScreen(boxYear, boxMonth, boxDate, recordedData[dataKey]);
                         return;
                     }
                     if (isToday) {
-                        openCameraScreen(day);
+                        openCameraScreen(boxYear, boxMonth, boxDate);
                     } else {
-                        const boxDateObj = new Date(currentYear, selectedMonth - 1, day);
-                        const todayResetObj = new Date(currentYear, currentMonthNumReal - 1, currentDateReal);
-                        if (boxDateObj > todayResetObj) {
+                        // 今日リセット用オブジェクト
+                        const todayResetObj = new Date(currentYearReal, currentMonthNumReal - 1, currentDateReal);
+                        if (currentDate > todayResetObj) {
                             alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。');
                         } else {
                             alert('過去の日は撮影できません。日々の記録は当日のみ可能です。');
@@ -735,28 +756,64 @@
                 };
                 
                 calendarElement.appendChild(dayBox);
+                
+                // 1週間分の配列に日付を保存
+                weekDatesArray.push(new Date(currentDate));
 
-                const currentDayOfWeek = new Date(currentYear, selectedMonth - 1, day).getDay();
-                if (currentDayOfWeek === 6 || day === totalDays) {
-                    createTicket(currentWeekNum, weekStartDate, day);
-                    currentWeekNum++;
-                    weekStartDate = day + 1;
+                // 土曜日（週の終わり）が来たらチケットを生成
+                if (currentDate.getDay() === 6) {
+                    createTicket(weekNum, weekDatesArray);
+                    weekNum++;
+                    weekDatesArray = []; // 次の週のために配列をリセット
                 }
+
+                // 翌日へ進む
+                currentDate.setDate(currentDate.getDate() + 1);
             }
         }
 
-        function createTicket(weekNum, startD, endD) {
+        // 月をまたぐ表示に対応したチケット生成
+        function createTicket(weekNum, datesInWeek) {
+            const startDay = datesInWeek[0];
+            const endDay = datesInWeek[6];
+
+            const startM = monthNames[startDay.getMonth()].substring(0, 3);
+            const endM = monthNames[endDay.getMonth()].substring(0, 3);
+
+            let dateLabel = '';
+            // 月をまたいでいるかどうかで表示を分ける
+            if (startDay.getMonth() === endDay.getMonth()) {
+                dateLabel = `${startM} ${startDay.getDate()} - ${endDay.getDate()}`;
+            } else {
+                dateLabel = `${startM} ${startDay.getDate()} - ${endM} ${endDay.getDate()}`;
+            }
+
+            // この週にいくつの動画が記録されているかカウント
+            let recordedCount = 0;
+            datesInWeek.forEach(d => {
+                const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+                if (recordedData[key]) recordedCount++;
+            });
+
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
             ticket.innerHTML = `
                 <div class="ticket-info">
                     <div class="ticket-week">WEEK ${weekNum}</div>
-                    <div class="ticket-dates">${monthNames[selectedMonth-1].substring(0,3)} ${startD} - ${endD}</div>
+                    <div class="ticket-dates">${dateLabel}</div>
                 </div>
-                <div class="ticket-play">▶</div>
+                <div class="ticket-play">
+                    ${recordedCount > 0 ? `<span class="record-badge">${recordedCount} REC</span>` : ''}
+                    ▶
+                </div>
             `;
+            
             ticket.onclick = () => {
-                alert(`Week ${weekNum} の映像をつなげて再生する機能は、今後のアップデートで実装します！\n現在は日ごとの再生が可能です。`);
+                if (recordedCount === 0) {
+                    alert('この週にはまだ記録がありません。');
+                } else {
+                    alert(`【${dateLabel}】\nこの週に記録された ${recordedCount} 日分の映像を、1本の映画としてつなげて再生する処理に入ります。（※今後の実装）`);
+                }
             };
             ticketsArea.appendChild(ticket);
         }
@@ -767,11 +824,14 @@
         let timerInterval;
         let mediaRecorder;
         let recordedChunks = [];
-        const MAX_RECORD_TIME = 20000; // 20秒
+        const MAX_RECORD_TIME = 20000;
 
-        function openCameraScreen(day) {
-            currentSelectedDay = day;
-            cameraDateDisplay.textContent = `${monthNames[selectedMonth-1].substring(0,3)} ${day} - REC`;
+        function openCameraScreen(y, m, d) {
+            recordTargetYear = y;
+            recordTargetMonth = m;
+            recordTargetDay = d;
+            
+            cameraDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - REC`;
             homeScreen.style.display = 'none';
             cameraScreen.style.display = 'flex';
             
@@ -793,31 +853,26 @@
                     audio: true
                 });
                 cameraView.srcObject = stream;
-
                 mediaRecorder = new MediaRecorder(stream);
                 
                 mediaRecorder.ondataavailable = function(event) {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
+                    if (event.data.size > 0) recordedChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = function() {
                     const blob = new Blob(recordedChunks, { type: 'video/webm' }); 
                     const videoURL = URL.createObjectURL(blob); 
                     
-                    const dataKey = `${currentYear}-${selectedMonth}-${currentSelectedDay}`;
+                    // 正しい年月日でデータを保存
+                    const dataKey = `${recordTargetYear}-${recordTargetMonth}-${recordTargetDay}`;
                     recordedData[dataKey] = videoURL;
                     
                     stopCamera();
-                    
-                    // 録画完了後、ホームに戻る前に「CUT画面」を表示
                     cameraScreen.style.display = 'none';
                     finishScreen.style.display = 'flex';
                 };
-
             } catch (err) {
-                console.log("カメラ起動エラー詳細:", err);
+                console.log("カメラ起動エラー:", err);
                 alert("カメラまたはマイクの起動に失敗しました。\nブラウザのアクセス許可をご確認ください。");
             }
         }
@@ -835,27 +890,17 @@
                 isRecording = false;
                 recordBtn.classList.remove('recording');
                 clearInterval(timerInterval);
-                
-                if (mediaRecorder.state === 'recording') {
-                    mediaRecorder.pause(); 
-                }
+                if (mediaRecorder.state === 'recording') mediaRecorder.pause(); 
             } else {
                 isRecording = true;
                 recordBtn.classList.add('recording');
-                
-                if (mediaRecorder.state === 'inactive') {
-                    mediaRecorder.start(); 
-                } else if (mediaRecorder.state === 'paused') {
-                    mediaRecorder.resume(); 
-                }
+                if (mediaRecorder.state === 'inactive') mediaRecorder.start(); 
+                else if (mediaRecorder.state === 'paused') mediaRecorder.resume(); 
 
                 timerInterval = setInterval(() => {
                     totalRecordTime += 100;
-                    
-                    // バーの更新
                     progressBar.style.width = (totalRecordTime / MAX_RECORD_TIME) * 100 + '%';
                     
-                    // タイマーテキストの更新 (00:00形式)
                     const currentSec = Math.floor(totalRecordTime / 1000);
                     const formattedSec = currentSec.toString().padStart(2, '0');
                     recordTimer.textContent = `00:${formattedSec} / 00:20`;
@@ -872,13 +917,10 @@
             recordBtn.classList.remove('recording');
             clearInterval(timerInterval);
             recordBtn.disabled = true;
-            
-            if (mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-            }
+            if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
         }
 
-        // 撮影終了画面のRETURNボタン
+        // CUT画面のRETURNボタン
         document.getElementById('finish-ok-btn').onclick = () => {
             finishScreen.style.display = 'none';
             homeScreen.style.display = 'flex';
@@ -886,14 +928,13 @@
             initMonthScreen();
         };
 
-        // --- 再生（プレイバック）画面の処理 ---
-        function openPlaybackScreen(day, videoURL) {
-            playbackDateDisplay.textContent = `${monthNames[selectedMonth-1].substring(0,3)} ${day} - PLAY`;
+        // --- 再生画面の処理 ---
+        function openPlaybackScreen(y, m, d, videoURL) {
+            playbackDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - PLAY`;
             playbackView.src = videoURL; 
             
             homeScreen.style.display = 'none';
             playbackScreen.style.display = 'flex';
-            
             playbackView.play(); 
         }
 
@@ -904,13 +945,11 @@
             homeScreen.style.display = 'flex';
         };
 
-        // --- ナビゲーション戻る処理 ---
+        // --- ナビゲーション処理 ---
         document.getElementById('camera-back-btn').onclick = () => {
             isRecording = false;
             clearInterval(timerInterval);
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop(); 
-            }
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); 
             stopCamera();
             cameraScreen.style.display = 'none';
             homeScreen.style.display = 'flex';
