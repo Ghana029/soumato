@@ -162,7 +162,9 @@
         #camera-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
+        
         #camera-view { width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        
         #record-timer { position: absolute; top: 10px; right: 15px; color: #b22222; font-family: monospace; font-size: 14px; letter-spacing: 2px; z-index: 10; background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px; }
         #progress-container { width: 100%; height: 6px; background-color: #111; position: absolute; bottom: 0; left: 0; z-index: 10; }
         #progress-bar { height: 100%; width: 0%; background-color: #b22222; transition: width 0.1s linear; box-shadow: 0 0 10px rgba(178, 34, 34, 0.8); }
@@ -185,7 +187,6 @@
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
 
-        /* ★非表示の録画用画用紙（Canvas） */
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
 
     </style>
@@ -242,7 +243,7 @@
                 <div class="header-spacer"></div>
             </header>
             <div class="video-container">
-                <video id="playback-view" controls playsinline webkit-playsinline></video>
+                <video id="playback-view" playsinline webkit-playsinline></video>
             </div>
         </div>
 
@@ -253,7 +254,6 @@
         /* =========================================
            1. データベース（IndexedDB）の構築と操作
         ========================================= */
-        // ★データ形式が変わるため、保存箱の名前をv3に変更
         const dbName = 'OneYearInTwoHoursDB_v3';
         const storeName = 'videos';
         let db;
@@ -473,9 +473,10 @@
                 dayText.textContent = boxDate;
                 dayBox.appendChild(dayText);
                 
+                // ★マスのクリック処理を統合（単独再生）
                 dayBox.onclick = () => {
                     if (recordedData[dataKey]) {
-                        openPlaybackScreen(boxYear, boxMonth, boxDate, dataKey);
+                        startPlayback([dataKey]); // 配列に入れて渡す
                         return;
                     }
                     if (isToday) {
@@ -509,11 +510,12 @@
                 `${startM} ${startDay.getDate()} - ${endDay.getDate()}` : 
                 `${startM} ${startDay.getDate()} - ${endM} ${endDay.getDate()}`;
 
-            let recordedCount = 0;
+            let validKeys = [];
             datesInWeek.forEach(d => {
                 const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-                if (recordedData[key]) recordedCount++;
+                if (recordedData[key]) validKeys.push(key);
             });
+            const recordedCount = validKeys.length;
 
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
@@ -528,9 +530,13 @@
                 </div>
             `;
             
+            // ★チケットクリックで、その週の全動画キーを渡して連続再生
             ticket.onclick = () => {
-                if (recordedCount === 0) alert('この週にはまだ記録がありません。');
-                else alert(`【${dateLabel}】\nこの週に記録された ${recordedCount} 日分の映像を、1本の映画としてつなげて再生する処理に入ります。（※今後の実装）`);
+                if (recordedCount === 0) {
+                    alert('この週にはまだ記録がありません。');
+                } else {
+                    startPlayback(validKeys);
+                }
             };
             ticketsArea.appendChild(ticket);
         }
@@ -544,7 +550,6 @@
         const MAX_RECORD_TIME = 20000;
         
         const recordCanvas = document.getElementById('record-canvas');
-        // 画用紙のサイズをハイビジョン(16:9)に設定
         recordCanvas.width = 1280;
         recordCanvas.height = 720;
         const recordCanvasCtx = recordCanvas.getContext('2d');
@@ -563,29 +568,23 @@
 
         async function startCamera() {
             try {
-                // スマホのカメラとマイクを呼び出す
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" }, 
                     audio: true 
                 });
                 cameraView.srcObject = stream;
 
-                // 映像の再生が始まったら、Canvasへの描画（切り抜き）ループをスタート
                 cameraView.onplaying = () => {
                     if(drawFrameId) cancelAnimationFrame(drawFrameId);
                     drawToCanvas();
                 };
 
-                // Canvasから「切り抜き済みの映像ストリーム」を取得 (30fps)
                 const canvasStream = recordCanvas.captureStream(30);
-
-                // オリジナルのストリームからマイクの音声を拾って合成する
                 const audioTracks = stream.getAudioTracks();
                 if (audioTracks.length > 0) {
                     canvasStream.addTrack(audioTracks[0]);
                 }
 
-                // 合成したストリームを録画機にセットする
                 mediaRecorder = new MediaRecorder(canvasStream);
                 
                 mediaRecorder.ondataavailable = (event) => {
@@ -616,7 +615,6 @@
             }
         }
 
-        // カメラ映像の中心を16:9で切り抜いてCanvasに描き続ける関数
         function drawToCanvas() {
             if (!cameraView.srcObject) return;
             const vw = cameraView.videoWidth;
@@ -628,7 +626,6 @@
                 let sx = 0;
                 let sy = (vh - sHeight) / 2;
 
-                // もし元の映像が16:9より横長なら、左右を切り落とす
                 if (vw / vh > 16 / 9) {
                     sHeight = vh;
                     sWidth = vh * (16 / 9);
@@ -653,7 +650,6 @@
                 if (mediaRecorder.state === 'recording') mediaRecorder.pause(); 
             } else {
                 isRecording = true; recordBtn.classList.add('recording');
-                
                 if (mediaRecorder.state === 'inactive') mediaRecorder.start(200); 
                 else if (mediaRecorder.state === 'paused') mediaRecorder.resume(); 
 
@@ -677,39 +673,80 @@
             renderCalendarAndTickets(); initMonthScreen();
         };
 
-        /* === 再生画面（DBから読み込み） === */
-        async function openPlaybackScreen(y, m, d, dataKey) {
-            playbackDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - PLAY`;
+        /* === 5. 再生画面（プレイリスト連続再生機能） === */
+        let playlistUrls = [];
+        let currentPlayIndex = 0;
+
+        // ★単独再生も連続再生もこの関数で処理する
+        async function startPlayback(keys) {
+            playlistUrls = [];
             
-            try {
-                const blob = await getVideoFromDB(dataKey);
-                if(blob) {
-                    const videoURL = URL.createObjectURL(blob);
-                    playbackView.src = videoURL;
-                    
-                    homeScreen.style.display = 'none';
-                    playbackScreen.style.display = 'flex';
-                    
-                    playbackView.play().catch(e => {
-                        console.log("自動再生ブロック:", e);
-                    });
-                } else {
-                    alert("動画データが見つかりませんでした。");
+            // 渡された日付キーの順番通りにデータベースから動画を取り出し、URLリストを作る
+            for (let key of keys) {
+                try {
+                    const blob = await getVideoFromDB(key);
+                    if (blob) {
+                        playlistUrls.push({ key: key, url: URL.createObjectURL(blob) });
+                    }
+                } catch(e) {
+                    console.error("読み込みエラー", e);
                 }
-            } catch(e) {
-                console.error("読み込みエラー", e);
-                alert("動画の読み込みに失敗しました。");
             }
+
+            if (playlistUrls.length === 0) {
+                alert("再生できる動画が見つかりませんでした。");
+                return;
+            }
+
+            homeScreen.style.display = 'none';
+            playbackScreen.style.display = 'flex';
+            currentPlayIndex = 0;
+            
+            // 再生開始
+            playNextInPlaylist();
         }
 
-        document.getElementById('playback-back-btn').onclick = () => {
-            playbackView.pause();
-            URL.revokeObjectURL(playbackView.src);
-            playbackView.src = ""; 
+        function playNextInPlaylist() {
+            // リストの最後まで再生したら終了
+            if (currentPlayIndex >= playlistUrls.length) {
+                closePlaybackScreen();
+                return;
+            }
+
+            const currentItem = playlistUrls[currentPlayIndex];
             
+            // ヘッダーの表示切り替え
+            if (playlistUrls.length > 1) {
+                playbackDateDisplay.textContent = `WEEKLY MOVIE - ${currentPlayIndex + 1}/${playlistUrls.length}`;
+            } else {
+                const parts = currentItem.key.split('-');
+                playbackDateDisplay.textContent = `${monthNames[parseInt(parts[1])-1].substring(0,3)} ${parts[2]} - PLAY`;
+            }
+
+            playbackView.src = currentItem.url;
+            playbackView.play().catch(e => console.log("自動再生ブロック:", e));
+
+            // ★1つの動画が終わったら、自動で次の動画を呼び出す
+            playbackView.onended = () => {
+                currentPlayIndex++;
+                playNextInPlaylist();
+            };
+        }
+
+        function closePlaybackScreen() {
+            playbackView.pause();
+            playbackView.onended = null; // イベントを外す
+            
+            // プレイリストの全URLを破棄してメモリを綺麗にする
+            playlistUrls.forEach(item => URL.revokeObjectURL(item.url));
+            playlistUrls = [];
+            
+            playbackView.src = ""; 
             playbackScreen.style.display = 'none';
             homeScreen.style.display = 'flex';
-        };
+        }
+
+        document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
 
         /* --- ナビゲーション --- */
         document.getElementById('camera-back-btn').onclick = () => {
