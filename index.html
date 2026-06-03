@@ -115,7 +115,7 @@
         .ticket-action-btn { 
             background: none; border: 1px solid #111; color: #111; font-size: 14px; 
             cursor: pointer; border-radius: 4px; padding: 6px 12px; transition: 0.2s;
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: transparent; font-weight: bold;
         }
         .ticket-action-btn:hover { background-color: #111; color: #f4ebd0; }
 
@@ -123,13 +123,13 @@
         .video-container { width: 100%; aspect-ratio: 16 / 9; background-color: #222; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: 20px; }
         .video-element { width: 100%; height: 100%; object-fit: cover; z-index: 1; pointer-events: none; }
         
-        /* ★修正：日付の主張をさらに弱める（位置をより隅へ、不透明度をさらに下げて0.35に） */
+        /* ★日付のサイズをさらに小さく（10px） */
         .watermark-overlay {
             position: absolute; 
             bottom: 6px;  
             right: 10px;   
             color: rgba(244, 235, 208, 0.35); 
-            font-size: 11px; 
+            font-size: 10px; 
             font-weight: normal; 
             letter-spacing: 1px; 
             text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
@@ -172,8 +172,10 @@
             overflow-y: auto; padding: 40px 0; box-sizing: border-box;
         }
         .settings-title { font-size: 16px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 20px; margin-top: 30px; }
+        
         .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 20px; }
         
+        /* 4列で美しく並べるグリッド */
         .settings-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -191,10 +193,9 @@
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
         .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; cursor: pointer; border-radius: 20px; margin-top: 40px; }
 
-        /* --- 7. 書き出し（エクスポート）画面 --- */
+        /* --- 7. 書き出し画面 --- */
         #export-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; background-color: #0a0a0a; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; }
         
-        /* ★修正：タイトルと説明文、動画モニターの間隔を綺麗に等間隔（15px / 20px）に調整 */
         #export-screen .finish-title { font-size: 24px; margin-bottom: 15px; }
         #export-screen .finish-desc { font-size: 12px; margin-bottom: 20px; }
 
@@ -207,13 +208,15 @@
         #export-progress-container { width: 60%; height: 4px; background-color: #333; margin-bottom: 40px; border-radius: 2px; overflow: hidden; }
         #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
         
-        /* ★修正：リンクタグをブロック化し、2つのボタンの横幅（220px）と上下マージンを揃える */
+        /* ★ボタンを1列に揃える・横幅統一 */
         #export-download-link { text-decoration: none; display: inline-block; margin-bottom: 0; }
         #export-screen .finish-btn {
-            width: 220px;
+            width: 260px; /* 横幅を広げて1行化 */
             box-sizing: border-box;
             margin: 6px 0;
             text-align: center;
+            white-space: nowrap; /* テキストの折り返し防止 */
+            padding: 15px 20px;
         }
 
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
@@ -223,6 +226,7 @@
 <body>
 
     <div id="app">
+        <!-- 1. 月選択画面 -->
         <div id="month-screen">
             <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
             <div id="month-list"></div>
@@ -231,6 +235,7 @@
             </div>
         </div>
 
+        <!-- 2. ホーム画面 -->
         <div id="home-screen">
             <header class="home-header">
                 <button class="back-btn" id="month-back-btn">&lt; BACK</button>
@@ -246,6 +251,7 @@
             </div>
         </div>
 
+        <!-- 3. 撮影画面 -->
         <div id="camera-screen">
             <header class="camera-header">
                 <button class="back-btn" id="camera-back-btn">&lt; BACK</button>
@@ -262,12 +268,14 @@
             <div class="controls"><button id="record-btn"></button></div>
         </div>
 
+        <!-- 4. CUT画面 -->
         <div id="finish-screen">
             <div class="finish-title">CUT.</div>
             <div class="finish-desc">今日の記録をフィルムに焼き付けました</div>
             <button class="finish-btn" id="finish-ok-btn">RETURN</button>
         </div>
 
+        <!-- 5. 再生画面 -->
         <div id="playback-screen">
             <header class="camera-header">
                 <button class="back-btn" id="playback-back-btn">&lt; BACK</button>
@@ -280,6 +288,7 @@
             </div>
         </div>
 
+        <!-- 6. 設定画面 -->
         <div id="settings-screen">
             <div class="settings-title">APP FONT</div>
             <div class="month-select-container" id="font-select-container"></div>
@@ -297,8 +306,9 @@
             <button id="reset-db-btn" style="margin-top:40px; background:none; border:1px solid #444; color:#666; padding:5px 10px; font-size:10px; border-radius:10px;">RESET ALL DATA</button>
         </div>
 
+        <!-- 7. 書き出し画面 -->
         <div id="export-screen">
-            <div class="finish-title" id="export-title" style="font-size:24px;">EXPORTING...</div>
+            <div class="finish-title" id="export-title">EXPORTING...</div>
             <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください</div>
             
             <canvas id="export-canvas" width='1280' height='720'></canvas>
@@ -315,9 +325,12 @@
         /* =========================================
            1. 設定データの読み込みと初期化
         ========================================= */
+        // ★スタイリッシュなフォントを追加
         const fontOptions = [
             { label: 'Serif', value: "'Times New Roman', 'Noto Serif JP', serif" },
-            { label: 'Sans-Serif', value: "'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif" }
+            { label: 'Sans-Serif', value: "'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif" },
+            { label: 'Futura', value: "Futura, 'Century Gothic', 'Noto Sans JP', sans-serif" },
+            { label: 'Didot', value: "Didot, 'Bodoni MT', 'Noto Serif JP', serif" }
         ];
 
         let appStartMonth = 1;
@@ -328,6 +341,7 @@
             appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
             showWatermark = localStorage.getItem('showWatermark') !== 'false';
             appFont = localStorage.getItem('appFont') || fontOptions[0].value;
+            // モノスペース排除のセーフティ
             if (appFont.includes('monospace')) appFont = fontOptions[0].value;
         } catch (e) {}
 
@@ -448,7 +462,7 @@
                 await initDB();
                 const keys = await getAllRecordedKeys();
                 keys.forEach(key => { recordedData[key] = true; });
-            } catch (err) { console.warn("DBエラー"); }
+            } catch (err) {}
             initMonthScreen();
             buildSettingsUI();
         }
@@ -610,7 +624,9 @@ dayBox.onclick = () => {
             const recordedCount = validKeys.length;
 
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
-            const isLastDayRecorded = !!recordedData[lastDateKey]; const isWeekOver = todayResetObj > endDay; // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
+            const isLastDayRecorded = !!recordedData[lastDateKey]; 
+            const isWeekOver = todayResetObj > endDay; 
+            // ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
 const isViewable = true;
 
 
@@ -621,7 +637,7 @@ const isViewable = true;
                 <div class="ticket-info"><div class="ticket-week">WEEK ${weekNum}</div><div class="ticket-dates">${dateLabel}</div></div>
                 <div class="ticket-play">
                     ${recordedCount > 0 && isViewable ? `<span class="record-badge">${recordedCount} REC</span>` : ''}
-                    ${isViewable && recordedCount > 0 ? `<div class="action-btns"><button class="ticket-action-btn play-btn">▶</button><button class="ticket-action-btn save-btn">📥</button></div>` : (isViewable ? '▶' : '🔒')}
+                    ${isViewable && recordedCount > 0 ? `<div class="action-btns"><button class="ticket-action-btn play-btn">▶</button><button class="ticket-action-btn save-btn">↓</button></div>` : (isViewable ? '▶' : '🔒')}
                 </div>
             `;
             
@@ -763,22 +779,29 @@ const isViewable = true;
             exportTitle.textContent = "EXPORTING..."; exportDesc.innerHTML = "1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください";
             exportProgressBar.style.width = "0%"; exportProgressContainer.style.display = "block";
             exportDownloadLink.style.display = "none"; exportReturnBtn.style.display = "none";
-            exportCanvas.style.display = "block"; // モニターCanvasを表示
+            exportCanvas.style.display = "block"; 
 
             const exportVideo = document.createElement('video');
-            exportVideo.playsInline = true; exportVideo.muted = false; 
+            exportVideo.playsInline = true; 
+            exportVideo.muted = false; 
 
-            let audioCtx = null; let dest = null; let dummyOsc = null;
+            let audioCtx = null;
+            let dest = null;
+            let dummyOsc = null;
             try {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 dest = audioCtx.createMediaStreamDestination();
+
                 dummyOsc = audioCtx.createOscillator();
                 const dummyGain = audioCtx.createGain();
                 dummyGain.gain.value = 0.0001; 
-                dummyOsc.connect(dummyGain); dummyGain.connect(dest); dummyOsc.start();
+                dummyOsc.connect(dummyGain);
+                dummyGain.connect(dest);
+                dummyOsc.start();
+
                 const source = audioCtx.createMediaElementSource(exportVideo);
                 source.connect(dest);
-            } catch(e) { console.log("AudioContext Error"); }
+            } catch(e) { console.log("AudioContext Error:", e); }
 
             const exportStream = exportCanvas.captureStream(30);
             if (dest) dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
@@ -802,17 +825,15 @@ const isViewable = true;
                         if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                         exportCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, exportCanvas.width, exportCanvas.height);
                         
-                        // ★修正：書き出し動画（Canvas）の日付の位置とサイズをアプリ表示と完璧に同期（右下スレスレ）
+                        // ★日付を小さく、右下へ配置
                         if (showWatermark && exportDateStr) {
-                            exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.6)";
-                            exportCanvasCtx.font = `normal 44px ${appFont}`; /* 比率を合わせたサイズに固定 */
+                            exportCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.35)";
+                            exportCanvasCtx.font = `normal 34px ${appFont}`;
                             exportCanvasCtx.textAlign = "right";
                             exportCanvasCtx.textBaseline = "bottom"; 
-                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.6)";
-                            exportCanvasCtx.shadowBlur = 6;
-                            
-                            // 右下から適切なマージン（右に40px、下に24px）を引いた位置に焼き付け
-                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 40, exportCanvas.height - 24);
+                            exportCanvasCtx.shadowColor = "rgba(0,0,0,0.5)";
+                            exportCanvasCtx.shadowBlur = 4;
+                            exportCanvasCtx.fillText(exportDateStr, exportCanvas.width - 30, exportCanvas.height - 20);
                             exportCanvasCtx.shadowBlur = 0;
                         }
                     }
@@ -852,9 +873,7 @@ const isViewable = true;
                     const mergedBlob = new Blob(exportChunks, { type: mime });
                     const safeDateLabel = dateLabel.replace(/\s+/g, '_').replace(/\//g, '-');
                     
-                    // ★修正：完了画面に移行した際、用を終えた四角い動画モニター（Canvas）を非表示にする
                     exportCanvas.style.display = "none";
-
                     exportTitle.textContent = "COMPLETE.";
                     exportDesc.innerHTML = "フィルムの現像が完了しました<br>端末に保存してください";
                     exportProgressContainer.style.display = "none";
