@@ -103,7 +103,6 @@
         .ticket.locked .ticket-play { font-size: 14px; }
         .record-badge { font-size: 10px; background: #b22222; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
 
-        /* ★追加：チケット内のアクションボタン */
         .action-btns { display: flex; gap: 10px; }
         .ticket-action-btn { 
             background: none; border: 1px solid #111; color: #111; font-size: 14px; 
@@ -148,13 +147,13 @@
             display: none; flex-direction: column; align-items: center; justify-content: center;
             height: 100dvh; background-color: rgba(10,10,10,0.95); position: absolute; top: 0; left: 0; width: 100%; z-index: 100;
         }
-        .settings-title { font-size: 20px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 30px; }
-        .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 40px; }
+        .settings-title { font-size: 18px; letter-spacing: 4px; color: #f4ebd0; margin-bottom: 20px; margin-top: 30px; }
+        .month-select-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 80%; margin-bottom: 20px; }
         .month-opt-btn { background-color: #222; border: 1px solid #444; color: #888; padding: 10px 15px; font-family: inherit; font-size: 14px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .month-opt-btn.selected { background-color: #b22222; color: #f4ebd0; border-color: #f4ebd0; }
-        .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; font-family: inherit; cursor: pointer; border-radius: 20px; }
+        .close-settings-btn { background: none; border: 1px solid #888; color: #888; padding: 10px 30px; font-family: inherit; cursor: pointer; border-radius: 20px; margin-top: 40px; }
 
-        /* --- ★追加：書き出し（エクスポート）画面 --- */
+        /* --- 7. 書き出し画面 --- */
         #export-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; background-color: #0a0a0a; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; }
         #export-progress-container { width: 60%; height: 4px; background-color: #333; margin-bottom: 40px; border-radius: 2px; overflow: hidden; }
         #export-progress-bar { height: 100%; width: 0%; background-color: #f4ebd0; transition: width 0.3s; }
@@ -171,8 +170,7 @@
             <div class="month-screen-header">YEAR <span id="current-year-display"></span></div>
             <div id="month-list"></div>
             <div class="bottom-menu">
-                <button class="text-btn" id="open-settings-btn">⚙️ START MONTH</button>
-                <button class="text-btn" id="reset-db-btn">RESET ALL DATA</button>
+                <button class="text-btn" id="open-settings-btn">⚙️ SETTINGS</button>
             </div>
         </div>
 
@@ -224,22 +222,25 @@
         </div>
 
         <div id="settings-screen">
-            <div class="settings-title">1年の始まりの月</div>
+            <div class="settings-title">始まりの月</div>
             <div class="month-select-container" id="month-select-container"></div>
+            
+            <div class="settings-title">日付の焼き付け</div>
+            <div class="month-select-container">
+                <button class="month-opt-btn" id="watermark-on-btn">ON</button>
+                <button class="month-opt-btn" id="watermark-off-btn">OFF</button>
+            </div>
+
             <button class="close-settings-btn" id="close-settings-btn">CLOSE</button>
+
+            <button id="reset-db-btn" style="margin-top:40px; background:none; border:1px solid #444; color:#666; padding:5px 10px; font-size:10px; border-radius:10px;">RESET ALL DATA</button>
         </div>
 
         <div id="export-screen">
             <div class="finish-title" id="export-title">EXPORTING...</div>
             <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>このままお待ちください</div>
-            
-            <div id="export-progress-container">
-                <div id="export-progress-bar"></div>
-            </div>
-
-            <a id="export-download-link" style="display: none;">
-                <button class="finish-btn">SAVE TO DEVICE</button>
-            </a>
+            <div id="export-progress-container"><div id="export-progress-bar"></div></div>
+            <a id="export-download-link" style="display: none;"><button class="finish-btn">SAVE TO DEVICE</button></a>
             <button class="finish-btn" id="export-return-btn" style="display: none;">RETURN</button>
         </div>
 
@@ -336,10 +337,11 @@
 
         const viewYear = currentYearReal;
         document.getElementById('current-year-display').textContent = viewYear;
-        
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         
+        // 設定情報の取得
         let appStartMonth = parseInt(localStorage.getItem('appStartMonth')) || 1;
+        let showWatermark = localStorage.getItem('showWatermark') !== 'false';
         
         let activeMonthIndex = 0; 
         let cards = [];
@@ -350,7 +352,6 @@
         let recordTargetDay = null;
         let selectedMonth = null;
         let currentRenderYear = viewYear;
-        
         let recordedData = {};
 
         async function startApp() {
@@ -446,6 +447,7 @@
         document.getElementById('open-settings-btn').onclick = () => { settingsScreen.style.display = 'flex'; };
         document.getElementById('close-settings-btn').onclick = () => { settingsScreen.style.display = 'none'; };
 
+        // 設定画面の構築
         function buildSettingsUI() {
             const container = document.getElementById('month-select-container');
             container.innerHTML = '';
@@ -453,7 +455,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'month-opt-btn';
                 if(i === appStartMonth) btn.classList.add('selected');
-                btn.textContent = `${i}月始まり`;
+                btn.textContent = `${i}月`;
                 btn.onclick = () => {
                     localStorage.setItem('appStartMonth', i);
                     appStartMonth = i;
@@ -463,6 +465,23 @@
                 };
                 container.appendChild(btn);
             }
+
+            // ウォーターマーク設定の初期化
+            const wOnBtn = document.getElementById('watermark-on-btn');
+            const wOffBtn = document.getElementById('watermark-off-btn');
+            if(showWatermark) wOnBtn.classList.add('selected');
+            else wOffBtn.classList.add('selected');
+
+            wOnBtn.onclick = () => {
+                showWatermark = true;
+                localStorage.setItem('showWatermark', 'true');
+                wOnBtn.classList.add('selected'); wOffBtn.classList.remove('selected');
+            };
+            wOffBtn.onclick = () => {
+                showWatermark = false;
+                localStorage.setItem('showWatermark', 'false');
+                wOffBtn.classList.add('selected'); wOnBtn.classList.remove('selected');
+            };
         }
 
         /* === ホーム（カレンダー）画面 === */
@@ -509,19 +528,18 @@
                 dayText.textContent = boxDate;
                 dayBox.appendChild(dayText);
                 
-                // ▼ 変更前（本来の厳密なルール：今日しか撮影できない）
-
-
-
-// ▼ 変更後（テスト用：空のマスなら、過去でも未来でもいつでも撮影できる！）
-dayBox.onclick = () => {
-    if (recordedData[dataKey]) {
-        startPlayback([dataKey]); 
-        return;
-    }
-    // エラーメッセージを消して、無条件でカメラを開く
-    openCameraScreen(boxYear, boxMonth, boxDate);
-};
+                dayBox.onclick = () => {
+                    if (recordedData[dataKey]) {
+                        startPlayback([dataKey]); 
+                        return;
+                    }
+                    if (isToday) {
+                        openCameraScreen(boxYear, boxMonth, boxDate);
+                    } else {
+                        if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。');
+                        else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。');
+                    }
+                };
                 
                 calendarElement.appendChild(dayBox);
                 weekDatesArray.push(new Date(currentDate));
@@ -555,17 +573,12 @@ dayBox.onclick = () => {
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
             const isLastDayRecorded = !!recordedData[lastDateKey]; 
             const isWeekOver = todayResetObj > endDay; 
-            // ▼ 変更前（本来の厳密なロック機能）
-
-
-// ▼ 変更後（テスト用：強制的に true を入れてすべて解放する）
-const isViewable = true;
+            const isViewable = isLastDayRecorded || isWeekOver;
 
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
 
-            // ★ボタンのデザインを追加
             ticket.innerHTML = `
                 <div class="ticket-info">
                     <div class="ticket-week">WEEK ${weekNum}</div>
@@ -582,29 +595,17 @@ const isViewable = true;
                 </div>
             `;
             
-            // ★クリックイベントの振り分け
             if (isViewable && recordedCount > 0) {
                 const playBtn = ticket.querySelector('.play-btn');
                 const saveBtn = ticket.querySelector('.save-btn');
-                
-                playBtn.onclick = (e) => {
-                    e.stopPropagation(); // チケット本体のクリックを防ぐ
-                    startPlayback(validKeys);
-                };
-                saveBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    startExport(validKeys, dateLabel); // エクスポート処理へ
-                };
-                
-                // 余白をクリックした場合は再生にする
+                playBtn.onclick = (e) => { e.stopPropagation(); startPlayback(validKeys); };
+                saveBtn.onclick = (e) => { e.stopPropagation(); startExport(validKeys, dateLabel); };
                 ticket.onclick = () => startPlayback(validKeys);
-
             } else if (isViewable && recordedCount === 0) {
                 ticket.onclick = () => alert('この週には記録がありません。');
             } else {
                 ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。');
             }
-
             ticketsArea.appendChild(ticket);
         }
 
@@ -620,9 +621,14 @@ const isViewable = true;
         recordCanvas.width = 1280; recordCanvas.height = 720;
         const recordCanvasCtx = recordCanvas.getContext('2d');
         let drawFrameId;
+        let currentRecordingDateStr = "";
 
         function openCameraScreen(y, m, d) {
             recordTargetYear = y; recordTargetMonth = m; recordTargetDay = d;
+            
+            // ★日付表示用の文字列を作る（例：2026.06.03）
+            currentRecordingDateStr = `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
+            
             cameraDateDisplay.textContent = `${monthNames[m-1].substring(0,3)} ${d} - REC`;
             homeScreen.style.display = 'none'; cameraScreen.style.display = 'flex';
             totalRecordTime = 0; recordedChunks = []; progressBar.style.width = '0%';
@@ -635,7 +641,7 @@ const isViewable = true;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true });
                 cameraView.srcObject = stream;
-                cameraView.onplaying = () => { if(drawFrameId) cancelAnimationFrame(drawFrameId); drawToCanvas(cameraView); };
+                cameraView.onplaying = () => { if(drawFrameId) cancelAnimationFrame(drawFrameId); drawToCanvas(cameraView, true); };
 
                 const canvasStream = recordCanvas.captureStream(30);
                 const audioTracks = stream.getAudioTracks();
@@ -656,15 +662,26 @@ const isViewable = true;
             }
         }
 
-        function drawToCanvas(videoEl) {
+        function drawToCanvas(videoEl, isRecordingPhase = false) {
             if (!videoEl || videoEl.paused || videoEl.ended) return;
             const vw = videoEl.videoWidth; const vh = videoEl.videoHeight;
             if (vw > 0 && vh > 0) {
                 let sWidth = vw, sHeight = vw * (9 / 16), sx = 0, sy = (vh - sHeight) / 2;
                 if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
                 recordCanvasCtx.drawImage(videoEl, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
+                
+                // ★日付の焼き付け（ウォーターマーク）
+                if (isRecordingPhase && showWatermark) {
+                    recordCanvasCtx.fillStyle = "rgba(244, 235, 208, 0.85)";
+                    recordCanvasCtx.font = "bold 36px 'Courier New', monospace";
+                    recordCanvasCtx.textAlign = "right";
+                    recordCanvasCtx.shadowColor = "rgba(0,0,0,0.8)";
+                    recordCanvasCtx.shadowBlur = 8;
+                    recordCanvasCtx.fillText(currentRecordingDateStr, recordCanvas.width - 40, recordCanvas.height - 40);
+                    recordCanvasCtx.shadowBlur = 0; // リセット
+                }
             }
-            drawFrameId = requestAnimationFrame(() => drawToCanvas(videoEl));
+            drawFrameId = requestAnimationFrame(() => drawToCanvas(videoEl, isRecordingPhase));
         }
 
         function stopCamera() { 
@@ -741,7 +758,7 @@ const isViewable = true;
 
         document.getElementById('playback-back-btn').onclick = closePlaybackScreen;
 
-        /* === ★追加：1週間の書き出し（エクスポート）機能 === */
+        /* === ★修正：1週間の書き出し（途切れないエクスポート） === */
         const exportTitle = document.getElementById('export-title');
         const exportDesc = document.getElementById('export-desc');
         const exportProgressBar = document.getElementById('export-progress-bar');
@@ -753,7 +770,6 @@ const isViewable = true;
             homeScreen.style.display = 'none';
             exportScreen.style.display = 'flex';
             
-            // 画面の初期化
             exportTitle.textContent = "EXPORTING...";
             exportDesc.innerHTML = "1週間分のフィルムを現像しています<br>このままお待ちください";
             exportProgressBar.style.width = "0%";
@@ -761,12 +777,10 @@ const isViewable = true;
             exportDownloadLink.style.display = "none";
             exportReturnBtn.style.display = "none";
 
-            // 裏側で再生するための隠しVideo要素
             const exportVideo = document.createElement('video');
             exportVideo.playsInline = true;
-            exportVideo.muted = false; // 音声を抽出するため
+            exportVideo.muted = false; 
 
-            // 映像と音声を合成する仕組みの準備
             let audioCtx = null;
             let dest = null;
             try {
@@ -774,28 +788,44 @@ const isViewable = true;
                 dest = audioCtx.createMediaStreamDestination();
                 const source = audioCtx.createMediaElementSource(exportVideo);
                 source.connect(dest);
-            } catch(e) {
-                console.log("AudioContext fallback:", e);
-            }
+            } catch(e) { console.log("AudioContext fallback:", e); }
 
-            // Canvasから映像を取得し、AudioContextから音声を取得して合成
             const exportStream = recordCanvas.captureStream(30);
-            if (dest) {
-                dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
-            }
+            if (dest) dest.stream.getAudioTracks().forEach(t => exportStream.addTrack(t));
 
             const exportRecorder = new MediaRecorder(exportStream);
             const exportChunks = [];
             exportRecorder.ondataavailable = e => { if(e.data.size > 0) exportChunks.push(e.data); };
 
             let currentIndex = 0;
-            exportRecorder.start();
+            let isExporting = true;
 
-            // 順番に裏で再生し、Canvasに描画して再録画する
+            // ★フリーズ防止：裏側でキャンバスを常に描き続ける（動画が切り替わる一瞬の隙間も黒で埋める）
+            function exportDrawLoop() {
+                if (!isExporting) return;
+                
+                recordCanvasCtx.fillStyle = '#000';
+                recordCanvasCtx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
+
+                if (exportVideo.readyState >= 2 && !exportVideo.paused && !exportVideo.ended) {
+                    const vw = exportVideo.videoWidth; const vh = exportVideo.videoHeight;
+                    if (vw > 0 && vh > 0) {
+                        let sWidth = vw, sHeight = vw * (9 / 16), sx = 0, sy = (vh - sHeight) / 2;
+                        if (vw / vh > 16 / 9) { sHeight = vh; sWidth = vh * (16 / 9); sx = (vw - sWidth) / 2; sy = 0; }
+                        recordCanvasCtx.drawImage(exportVideo, sx, sy, sWidth, sHeight, 0, 0, recordCanvas.width, recordCanvas.height);
+                    }
+                }
+                requestAnimationFrame(exportDrawLoop);
+            }
+
+            exportRecorder.start();
+            exportDrawLoop(); // ループ開始！
+
             async function playNextForExport() {
                 exportProgressBar.style.width = `${(currentIndex / keys.length) * 100}%`;
 
                 if (currentIndex >= keys.length) {
+                    isExporting = false; // ループ停止
                     exportRecorder.stop();
                     return;
                 }
@@ -803,30 +833,24 @@ const isViewable = true;
                 const blob = await getVideoFromDB(keys[currentIndex]);
                 exportVideo.src = URL.createObjectURL(blob);
                 
-                exportVideo.play().catch(e => {
-                    console.error("Export play error:", e);
-                    URL.revokeObjectURL(exportVideo.src);
-                    currentIndex++;
-                    playNextForExport(); // エラー時はスキップして次へ
-                });
-
-                exportVideo.onplaying = () => {
-                    if(drawFrameId) cancelAnimationFrame(drawFrameId);
-                    drawToCanvas(exportVideo);
+                // 動画の準備ができたら再生する
+                exportVideo.oncanplay = () => {
+                    exportVideo.play().catch(e => {
+                        console.error("Export play error:", e);
+                        URL.revokeObjectURL(exportVideo.src);
+                        currentIndex++; playNextForExport(); 
+                    });
                 };
                 
                 exportVideo.onended = () => {
-                    cancelAnimationFrame(drawFrameId);
                     URL.revokeObjectURL(exportVideo.src);
                     currentIndex++;
                     playNextForExport();
                 };
             }
 
-            // 全ての再録画が終わったらファイルにする
             exportRecorder.onstop = () => {
                 exportProgressBar.style.width = "100%";
-                
                 setTimeout(() => {
                     const mime = exportRecorder.mimeType || '';
                     const ext = mime.includes('mp4') ? 'mp4' : 'webm';
