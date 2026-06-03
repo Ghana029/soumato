@@ -152,7 +152,6 @@
         .ticket::before { left: -8px; } .ticket::after { right: -8px; }
         .ticket:hover { transform: translateY(-2px); background-color: #e8debf; }
         
-        /* ★追加：ロック中のチケットのデザイン */
         .ticket.locked {
             background-color: #2a2a2a;
             color: #666;
@@ -172,7 +171,6 @@
         .ticket-dates { font-size: 11px; color: #444; margin-top: 4px; }
         .ticket-play { font-size: 18px; display: flex; align-items: center; gap: 8px; }
         
-        /* ロック中アイコンの微調整 */
         .ticket.locked .ticket-play { font-size: 14px; }
 
         .record-badge { font-size: 10px; background: #b22222; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
@@ -204,6 +202,13 @@
         /* --- 5. 再生画面 --- */
         #playback-screen { display: none; flex-direction: column; height: 100dvh; background-color: #000; }
         #playback-date-display { flex-grow: 1; text-align: center; font-size: 16px; letter-spacing: 2px; color: #888; }
+        
+        /* ★修正：再生画面の動画を画面の中央に配置 */
+        #playback-screen .video-container {
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+        
         #playback-view { width: 100%; height: 100%; object-fit: cover; }
 
         #record-canvas { position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none; }
@@ -538,17 +543,15 @@
             });
             const recordedCount = validKeys.length;
 
-            // ★週が「完了」しているかどうかの判定（ロック機能）
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
-            const isLastDayRecorded = !!recordedData[lastDateKey]; // その週の土曜日を撮り終えたか
-            const isWeekOver = todayResetObj > endDay; // すでに次の週以降になっているか（現在の日付が土曜日を過ぎているか）
+            const isLastDayRecorded = !!recordedData[lastDateKey]; 
+            const isWeekOver = todayResetObj > endDay; 
 
             const isViewable = isLastDayRecorded || isWeekOver;
 
             const ticket = document.createElement('div');
             ticket.className = 'ticket';
             
-            // 閲覧可能でない場合はロックデザインを適用
             if (!isViewable) {
                 ticket.classList.add('locked');
             }
