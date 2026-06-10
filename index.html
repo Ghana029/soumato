@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>1 Year in 2 Hours</title>
+    <title>soumato</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="1Year2Hours">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><rect width='256' height='256' fill='%23111'/><circle cx='128' cy='128' r='90' fill='none' stroke='%23b22222' stroke-width='12'/><rect x='100' y='90' width='60' height='80' fill='%23f4ebd0'/></svg>">
+    <link rel="apple-touch-icon" href="icon9.jpg?v=2">
 
     <style>
         :root {
@@ -252,7 +252,7 @@
 
         <div id="finish-screen">
             <div class="finish-title">CUT.</div>
-            <div class="finish-desc">今日の記録をフィルムに焼き付けました</div>
+            <div class="finish-desc">今日の記録が完了しました</div>
             <button class="finish-btn" id="finish-ok-btn">RETURN</button>
         </div>
 
@@ -270,13 +270,13 @@
         </div>
 
         <div id="settings-screen">
-            <div class="settings-title">APP FONT</div>
+            <div class="settings-title">FONT</div>
             <div id="font-select-container"></div>
 
             <div class="settings-title">START MONTH</div>
             <div class="settings-grid" id="month-select-container"></div>
             
-            <div class="settings-title">DATE WATERMARK</div>
+            <div class="settings-title">DATE</div>
             <div class="month-select-container">
                 <button class="month-opt-btn" id="watermark-on-btn">ON</button>
                 <button class="month-opt-btn" id="watermark-off-btn">OFF</button>
@@ -288,7 +288,7 @@
 
         <div id="export-screen">
             <div class="finish-title" id="export-title">EXPORTING...</div>
-            <div class="finish-desc" id="export-desc">1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください</div>
+            <div class="finish-desc" id="export-desc">1週間分をまとめています<br>結構待つよごめんね</div>
             <canvas id="export-canvas" width='1280' height='720'></canvas>
             <div id="export-progress-container"><div id="export-progress-bar"></div></div>
             <a id="export-download-link" style="display: none;"><button class="finish-btn">SAVE TO DEVICE</button></a>
@@ -601,23 +601,20 @@
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
                 dayBox.onclick = async () => {
-                    if (isToday) {
-                        const chunks = await getFullChunksForDate(dataKey);
-                        const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
-                        if (currentTotal < MAX_RECORD_TIME) {
-                            openCameraScreen(boxYear, boxMonth, boxDate);
-                            return;
-                        }
+                    // 【テスト用制限解除】当日以外でも現在の録画秒数をチェックする
+                    const chunks = await getFullChunksForDate(dataKey);
+                    const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
+                    
+                    // 20秒未満（未撮影または途中）なら、過去・未来問わずカメラを開く
+                    if (currentTotal < MAX_RECORD_TIME) {
+                        openCameraScreen(boxYear, boxMonth, boxDate);
+                        return;
                     }
                     
-                    if (recordedData[dataKey] && recordedData[dataKey].exists) { 
+                    // 20秒撮りきっている場合のみ再生へ
+                    if (recordedData[dataKey]) { 
                         startPlayback([dataKey]); 
                         return; 
-                    }
-                    
-                    if (!isToday) { 
-                        if (currentDate > todayResetObj) alert('まだその日は来ていません。未来の記録を楽しみにお待ちください。'); 
-                        else alert('過去の日は撮影できません。日々の記録は当日のみ可能です。'); 
                     }
                 };
                 
@@ -662,7 +659,7 @@
                 saveBtn.onclick = (e) => { e.stopPropagation(); startExport(validKeys, dateLabel); };
                 ticket.onclick = () => { startPlayback(validKeys); };
             } else if (isViewable && recordedCount === 0) { ticket.onclick = () => alert('この週には記録がありません。');
-            } else { ticket.onclick = () => alert('この週の振り返りは、週末の記録を終えるか、次の週になるまでのお楽しみです。'); }
+            } else { ticket.onclick = () => alert('週末の記録を終えるか、次の週になるまでのお楽しみです。'); }
             ticketsArea.appendChild(ticket);
         }
 
@@ -891,7 +888,7 @@
 
         async function startExport(keys, dateLabel) {
             homeScreen.style.display = 'none'; exportScreen.style.display = 'flex';
-            exportTitle.textContent = "EXPORTING..."; exportDesc.innerHTML = "1週間分のフィルムを現像しています<br>画面を閉じずにお待ちください";
+            exportTitle.textContent = "EXPORTING..."; exportDesc.innerHTML = "1週間分をまとめています<br>結構待つよごめんね";
             exportProgressBar.style.width = "0%"; exportProgressContainer.style.display = "block";
             exportDownloadLink.style.display = "none"; exportReturnBtn.style.display = "none";
             exportCanvas.style.display = "block"; 
@@ -930,7 +927,7 @@
                 });
             }
 
-            if (allExportItems.length === 0) { alert("現像する動画が見つかりませんでした。"); exportScreen.style.display = 'none'; homeScreen.style.display = 'flex'; return; }
+            if (allExportItems.length === 0) { alert("動画が見つかりませんでした。"); exportScreen.style.display = 'none'; homeScreen.style.display = 'flex'; return; }
 
             let currentIndex = 0; let isExporting = true; let exportDateStr = "";
 
@@ -994,7 +991,7 @@
                     
                     exportCanvas.style.display = "none";
                     exportTitle.textContent = "COMPLETE.";
-                    exportDesc.innerHTML = "フィルムの現像が完了しました<br>端末に保存してください";
+                    exportDesc.innerHTML = "完了しました<br>端末に保存してください";
                     exportProgressContainer.style.display = "none";
                     
                     exportDownloadLink.href = URL.createObjectURL(mergedBlob);
