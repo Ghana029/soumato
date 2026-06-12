@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="走馬灯">
-    <link rel="apple-touch-icon" href="icon9.jpg?v=2">
+    <link rel="apple-touch-icon" href="icon.jpg?v=2">
 
     <style>
         :root {
@@ -601,18 +601,24 @@
                 const dayText = document.createElement('span'); dayText.textContent = boxDate; dayBox.appendChild(dayText);
                 
                 dayBox.onclick = async () => {
-                    // ★テスト用：過去・未来問わず、20秒未満ならカメラを開く
-                    const chunks = await getFullChunksForDate(dataKey);
-                    const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
-                    if (currentTotal < MAX_RECORD_TIME) {
-                        openCameraScreen(boxYear, boxMonth, boxDate);
-                        return;
+                    if (isToday) {
+                        const chunks = await getFullChunksForDate(dataKey);
+                        const currentTotal = chunks.reduce((sum, item) => sum + item.duration, 0);
+                        if (currentTotal < MAX_RECORD_TIME) {
+                            openCameraScreen(boxYear, boxMonth, boxDate);
+                            return;
+                        }
                     }
                     
-                    // ★テスト用：20秒撮りきっていたら「7秒チラ見せ（true）」で再生する
                     if (recordedData[dataKey] && recordedData[dataKey].exists) { 
+                        // ★変更：カレンダーからの再生は「7秒間のチラ見せモード（true）」にする
                         startPlayback([dataKey], true); 
                         return; 
+                    }
+                    
+                    if (!isToday) { 
+                        if (currentDate > todayResetObj) alert('記憶がどれだけ大切で素晴らしくて、苦しいものなのか！'); 
+                        else alert('この日は忙しかったんだっけ'); 
                     }
                 };
                 
@@ -634,12 +640,11 @@
             });
             const recordedCount = validKeys.length;
 
+            // ★修正：土曜日（最後の日）の録画が「20秒完全に完了しているか」を判定基準にする
             const lastDateKey = `${endDay.getFullYear()}-${endDay.getMonth() + 1}-${endDay.getDate()}`;
             const isLastDayComplete = recordedData[lastDateKey] && recordedData[lastDateKey].isComplete; 
             const isWeekOver = todayResetObj > endDay; 
-            
-            // ★テスト用：チケットのロックを強制的に解除
-            const isViewable = true;
+            const isViewable = isLastDayComplete || isWeekOver;
 
             const ticket = document.createElement('div'); ticket.className = 'ticket';
             if (!isViewable) ticket.classList.add('locked');
